@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Services\TwelveData\TwelveDataClient;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,6 +24,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Passport::tokensCan([
+            'mcp:read' => 'Leer datos financieros del usuario',
+            'mcp:simulate' => 'Ejecutar simulaciones de inversión',
+        ]);
     }
 }
