@@ -6,14 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\MarketData\ProfileRequest;
 use App\Http\Requests\MarketData\QuoteRequest;
 use App\Http\Requests\MarketData\TimeSeriesRequest;
-use App\Services\MarketData\MarketDataProvider;
+use App\Services\MarketDataService;
 use App\Services\TwelveData\Exceptions\TwelveDataException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Arr;
 
 class MarketDataController extends Controller
 {
-    public function __construct(protected readonly MarketDataProvider $marketData) {}
+    public function __construct(protected readonly MarketDataService $marketData) {}
 
     /**
      * GET /api/market-data/quote
