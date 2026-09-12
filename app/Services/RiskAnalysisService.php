@@ -35,7 +35,7 @@ class RiskAnalysisService
      */
     public function suggestRiskProfile(FinancialProfile $profile): string
     {
-        if (!empty($profile->risk_tolerance)) {
+        if (! empty($profile->risk_tolerance)) {
             return $profile->risk_tolerance;
         }
 
@@ -44,13 +44,13 @@ class RiskAnalysisService
         return match (true) {
             $months < 24 => 'conservative',
             $months < 60 => 'moderate',
-            default      => 'aggressive',
+            default => 'aggressive',
         };
     }
 
     private function validateRiskLevel(string $riskTolerance): void
     {
-        if (!in_array($riskTolerance, config('investment_rules.risk_levels'), true)) {
+        if (! in_array($riskTolerance, config('investment_rules.risk_levels'), true)) {
             throw new InvalidArgumentException("Perfil de riesgo inválido: {$riskTolerance}");
         }
     }
