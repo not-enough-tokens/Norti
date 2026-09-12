@@ -75,7 +75,7 @@ MVP mínimo demostrable si el tiempo se reduce: `get_financial_profile`, `get_po
 - Registrar el server en `routes/ai.php`:
   ```php
   Mcp::web('/mcp/banorte', \App\Mcp\Servers\BanorteServer::class)
-      ->middleware(['auth:api']);
+      ->middleware(['auth:api', 'throttle:mcp']);
   ```
 
 ## Comandos
@@ -103,14 +103,14 @@ Tests: usar los helpers de `Laravel\Mcp\Server\Testing\*` para cubrir — cada t
 
 ## Roadmap y ownership (M0–M8)
 
-- M0 Project Foundation — Laravel + Git + DB + Auth + MCP ✅ completado
-- M1 Financial Domain (Integrante A)
-- M2 Financial Services (Integrante A)
-- **M3 MCP Server — BanorteServer + Tools (Felix / Integrante B)** ← este repo, foco actual
-- M4 External Data — MarketDataProvider Mock→Real (Integrante C, twelvedata.com en curso)
+- M0 Project Foundation — Laravel + Git + DB + Auth + MCP ✅ completado (Passport incluido)
+- M1 Financial Domain (Integrante A) — modelos y migraciones ✅ (mergeados a `Mcp-services`); faltan factories/seeders/relaciones adicionales en `User`
+- M2 Financial Services (Integrante A) — pendiente; M3 usa placeholders mientras tanto (ver abajo)
+- **M3 MCP Server — BanorteServer + Tools (Felix / Integrante B)** ✅ las 6 tools implementadas, registradas y probadas
+- M4 External Data — MarketDataProvider Mock→Real (Integrante C, twelvedata.com en curso) — cliente HTTP ya funcional, M3 ya lo consume vía `MarketDataProviderContract`
 - M5 AI/Agents (Integrante C)
 - M6 Financial Education (Integrante D)
-- **M7 Security & Hardening (Felix / Integrante B)**
+- **M7 Security & Hardening (Felix / Integrante B)** ✅ audit log + rate limiting activos
 - M8 Product & Demonstration (Integrante D)
 
 Ownership = responsabilidad principal, no exclusividad.
@@ -118,6 +118,24 @@ Ownership = responsabilidad principal, no exclusividad.
 ## Regla de auditoría para features nuevas
 
 Toda funcionalidad nueva se evalúa con 3 preguntas: ¿aporta directamente al objetivo (análisis, educación, interoperabilidad MCP, UX, seguridad)? ¿introduce una dependencia innecesaria? ¿desplaza el núcleo del proyecto (MCP + dominio financiero + educación)?
+
+## Estado de implementación M3/M7 y cómo probar manualmente
+
+Las 6 tools (`get_financial_profile`, `get_portfolio`, `analyze_portfolio`, `get_asset_information`, `get_market_snapshot`, `simulate_investment`) están implementadas, registradas en `BanorteServer` y activas en `/mcp/banorte`. `FinancialProfileServiceContract` y `PortfolioServiceContract` corren contra Eloquent real; `RiskAnalysisServiceContract` e `InvestmentSimulationServiceContract` usan implementaciones **placeholder** explícitamente marcadas como tales en `app/Services/Financial/Placeholder*.php` — reemplazar el binding en `app/Providers/DomainServiceProvider.php` cuando Integrante A/M2 entregue el algoritmo real; ninguna tool necesita cambios. `MarketDataProviderContract` ya corre contra el `TwelveDataClient` real de M4.
+
+Cada entorno (incluida Supabase) necesita correr su propio `php artisan passport:install` — las llaves de encriptación (`storage/oauth-*.key`) y el cliente personal-access viven en ese entorno, no se comparten vía git.
+
+Para emitir un token de prueba y llamar al server manualmente:
+
+```bash
+php artisan tinker
+```
+```php
+$user = App\Models\User::first(); // o crear uno con User::factory()->create()
+$token = $user->createToken('mcp-session', ['mcp:read', 'mcp:simulate'])->accessToken;
+```
+
+Luego, con `php artisan serve` corriendo, un POST JSON-RPC a `/mcp/banorte` con `Authorization: Bearer <token>` (primero `initialize`, después `tools/call` con el `Mcp-Session-Id` que regresa el header de la respuesta de `initialize`) — o usar `php artisan mcp:inspector /mcp/banorte` para una UI interactiva. En tests, usar `Laravel\Passport\Passport::actingAs($user, ['mcp:read'])` + `BanorteServer::tool(NombreTool::class, [...])->assertOk()` (ver `tests/Feature/Mcp/*Test.php` para el patrón).
 
 ## Fuera de scope (explícito)
 
