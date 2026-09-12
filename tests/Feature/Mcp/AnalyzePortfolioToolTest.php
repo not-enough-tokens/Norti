@@ -5,6 +5,7 @@ namespace Tests\Feature\Mcp;
 use App\Mcp\Servers\BanorteServer;
 use App\Mcp\Tools\AnalyzePortfolio;
 use App\Models\Asset;
+use App\Models\FinancialProfile;
 use App\Models\Holding;
 use App\Models\Portfolio;
 use App\Models\User;
@@ -68,8 +69,36 @@ class AnalyzePortfolioToolTest extends TestCase
                     'allocation_by_asset_type' => [],
                     'diversification_score' => null,
                     'concentration_warning' => false,
+                    'risk_tolerance' => null,
+                    'recommended_allocation_by_asset_type' => null,
                 ],
             ]);
+    }
+
+    public function test_includes_the_recommended_allocation_when_the_user_has_a_financial_profile(): void
+    {
+        Http::fake([
+            'api.twelvedata.com/quote*' => Http::response(['symbol' => 'AAPL', 'close' => '150.00']),
+        ]);
+
+        $user = User::factory()->create();
+        FinancialProfile::factory()->for($user)->create(['risk_tolerance' => 'moderate']);
+
+        $portfolio = Portfolio::factory()->for($user)->create();
+        $stock = Asset::factory()->create(['symbol' => 'AAPL', 'asset_type' => 'accion']);
+        Holding::factory()->for($portfolio)->for($stock)->create(['quantity' => 10, 'average_cost' => 100]);
+
+        Passport::actingAs($user, ['mcp:read']);
+
+        // RiskAnalysisService::assetAllocation('moderate') = ['bond'=>50,'fund'=>30,'stock'=>20],
+        // translated to Spanish asset_type keys: bono/fondo/accion.
+        BanorteServer::tool(AnalyzePortfolio::class, [])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.risk_tolerance', 'moderate')
+                ->where('props.recommended_allocation_by_asset_type.accion', 20)
+                ->where('props.recommended_allocation_by_asset_type.bono', 50)
+                ->where('props.recommended_allocation_by_asset_type.fondo', 30)
+                ->etc());
     }
 
     public function test_rejects_without_the_mcp_read_scope(): void

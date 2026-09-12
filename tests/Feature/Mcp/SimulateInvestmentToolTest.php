@@ -31,9 +31,9 @@ class SimulateInvestmentToolTest extends TestCase
                     'initial_amount' => 1000,
                     'months' => 12,
                     'risk_profile' => 'moderate',
-                    'assumed_annual_rate' => 0.07,
-                    'projected_value' => 1072.29,
-                    'projected_gain' => 72.29,
+                    'assumed_annual_rate' => 0.09,
+                    'projected_value' => 1093.81,
+                    'projected_gain' => 93.81,
                     'disclaimer' => 'Proyección aritmética simplificada (interés compuesto mensual a tasa fija). No considera volatilidad de mercado ni constituye asesoría financiera.',
                 ],
             ]);

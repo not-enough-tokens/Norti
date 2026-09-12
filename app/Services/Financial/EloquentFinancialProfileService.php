@@ -5,9 +5,14 @@ namespace App\Services\Financial;
 use App\Models\FinancialProfile;
 use App\Models\User;
 use App\Services\Contracts\FinancialProfileServiceContract;
+use App\Services\ProfileService;
 
 class EloquentFinancialProfileService implements FinancialProfileServiceContract
 {
+    public function __construct(
+        private readonly ProfileService $profileService,
+    ) {}
+
     public function getProfile(User $user, string $detail = 'summary'): array
     {
         $profile = $user->financialProfile;
@@ -39,6 +44,7 @@ class EloquentFinancialProfileService implements FinancialProfileServiceContract
 
     /**
      * Bucketed savings rate so the LLM sees a category, never the exact income/expense figures.
+     * Uses ProfileService::monthlySavingsCapacity() (Integrante A/M2) for the underlying figure.
      */
     private function savingsRateCategory(FinancialProfile $profile): string
     {
@@ -48,7 +54,7 @@ class EloquentFinancialProfileService implements FinancialProfileServiceContract
             return 'unknown';
         }
 
-        $savingsRate = ($income - (float) $profile->monthly_expenses) / $income;
+        $savingsRate = $this->profileService->monthlySavingsCapacity($profile) / $income;
 
         return match (true) {
             $savingsRate >= 0.2 => 'high',

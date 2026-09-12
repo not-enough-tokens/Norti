@@ -9,15 +9,20 @@ use App\Services\Contracts\PortfolioServiceContract;
 use App\Services\Contracts\RiskAnalysisServiceContract;
 use App\Services\Financial\EloquentFinancialProfileService;
 use App\Services\Financial\EloquentPortfolioService;
-use App\Services\Financial\PlaceholderInvestmentSimulationService;
-use App\Services\Financial\PlaceholderRiskAnalysisService;
+use App\Services\Financial\InvestmentSimulationServiceAdapter;
+use App\Services\Financial\RiskAnalysisServiceAdapter;
 use App\Services\MarketData\TwelveDataMarketDataProvider;
 use Illuminate\Support\ServiceProvider;
 
 /**
- * Bindings for the M3 Service Contracts. Swap the right-hand class here when
- * Integrante A/M2 delivers the real Risk/Simulation algorithms — no MCP tool
- * should need to change.
+ * Bindings for the M3 Service Contracts.
+ *
+ * RiskAnalysisServiceAdapter/InvestmentSimulationServiceAdapter wrap
+ * Integrante A/M2's real RiskAnalysisService/InvestmentSimulationService.
+ * MarketDataProviderContract still binds to our own TwelveDataMarketDataProvider
+ * rather than Integrante C's TwelveDataProvider (app/Services/MarketData) --
+ * that one's getHistoricalPrices()/getAssetProfile() are still stubs, so
+ * switching would regress get_asset_information/get_market_snapshot.
  */
 class DomainServiceProvider extends ServiceProvider
 {
@@ -26,7 +31,7 @@ class DomainServiceProvider extends ServiceProvider
         $this->app->bind(MarketDataProviderContract::class, TwelveDataMarketDataProvider::class);
         $this->app->bind(FinancialProfileServiceContract::class, EloquentFinancialProfileService::class);
         $this->app->bind(PortfolioServiceContract::class, EloquentPortfolioService::class);
-        $this->app->bind(RiskAnalysisServiceContract::class, PlaceholderRiskAnalysisService::class);
-        $this->app->bind(InvestmentSimulationServiceContract::class, PlaceholderInvestmentSimulationService::class);
+        $this->app->bind(RiskAnalysisServiceContract::class, RiskAnalysisServiceAdapter::class);
+        $this->app->bind(InvestmentSimulationServiceContract::class, InvestmentSimulationServiceAdapter::class);
     }
 }
