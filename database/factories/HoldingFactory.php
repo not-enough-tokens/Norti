@@ -3,11 +3,12 @@
 namespace Database\Factories;
 
 use App\Models\Asset;
+use App\Models\Holding;
 use App\Models\Portfolio;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<\App\Models\Holding>
+ * @extends Factory<Holding>
  */
 class HoldingFactory extends Factory
 {

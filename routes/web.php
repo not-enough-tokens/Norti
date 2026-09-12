@@ -1,7 +1,12 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EducationalTopicController;
+use App\Models\Asset;
+use App\Models\FinancialProfile;
+use App\Models\Holding;
+use App\Models\Portfolio;
+use App\Models\User;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
@@ -17,12 +22,12 @@ if (app()->environment('local')) {
     Route::get('/mcp-test', fn () => view('debug.mcp-tester'))->name('mcp.debug-tester');
 
     Route::get('/mcp-test/seed', function () {
-        $user = \App\Models\User::firstOrCreate(
+        $user = User::firstOrCreate(
             ['email' => 'demo@banorte.local'],
             ['name' => 'Demo User', 'password' => bcrypt('password')]
         );
 
-        \App\Models\FinancialProfile::firstOrCreate(['user_id' => $user->id], [
+        FinancialProfile::firstOrCreate(['user_id' => $user->id], [
             'monthly_income' => 35000,
             'monthly_expenses' => 22000,
             'savings' => 80000,
@@ -30,7 +35,7 @@ if (app()->environment('local')) {
             'investment_horizon_months' => 60,
         ]);
 
-        $portfolio = \App\Models\Portfolio::firstOrCreate(
+        $portfolio = Portfolio::firstOrCreate(
             ['user_id' => $user->id, 'name' => 'Portafolio Demo'],
             ['description' => 'Sembrado por /mcp-test/seed']
         );
@@ -42,12 +47,12 @@ if (app()->environment('local')) {
         ];
 
         foreach ($assets as $symbol => $data) {
-            $asset = \App\Models\Asset::firstOrCreate(
+            $asset = Asset::firstOrCreate(
                 ['symbol' => $symbol],
                 ['name' => $data['name'], 'asset_type' => $data['asset_type'], 'currency' => $data['currency']]
             );
 
-            \App\Models\Holding::firstOrCreate(
+            Holding::firstOrCreate(
                 ['portfolio_id' => $portfolio->id, 'asset_id' => $asset->id],
                 ['quantity' => $data['quantity'], 'average_cost' => $data['average_cost']]
             );

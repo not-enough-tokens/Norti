@@ -2,11 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\Portfolio;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<\App\Models\Portfolio>
+ * @extends Factory<Portfolio>
  */
 class PortfolioFactory extends Factory
 {
