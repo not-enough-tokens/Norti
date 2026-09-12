@@ -1,6 +1,6 @@
 <?php
 
-use bootstrap\Providers\AppServiceProvider;
+use App\Providers\AppServiceProvider;
 
 return [
     AppServiceProvider::class,
