@@ -8,6 +8,8 @@ Plataforma de Inteligencia Financiera y Educación Financiera vía MCP — HackM
 
 No es un chatbot financiero: es una capa de capacidades financieras interoperables que un agente de IA descubre y usa mediante MCP tools explícitas, sin acceso directo a la base de datos. Los tres pilares que deben mantenerse siempre: **MCP + dominio financiero + educación financiera**. Datos 100% sintéticos generados por el equipo (no hay dependencia de APIs bancarias reales); no es banca real, no ejecuta trading real, no da asesoría financiera regulada.
 
+Documentación complementaria de arquitectura/decisiones (agregada por Integrante C): `docs/architecture/*.md`, `docs/decisions/*.md`, `docs/development/roadmap.md`.
+
 ## Stack confirmado
 
 - PHP 8.4 (compatible con `^8.3` declarado en `composer.json`), Laravel 13.
