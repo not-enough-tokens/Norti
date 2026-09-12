@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 
 class EducationalTopic extends Model
 {
+
     protected $fillable = [
         'title',
         'slug',
@@ -15,4 +17,11 @@ class EducationalTopic extends Model
         'difficulty',
         'estimated_minutes',
     ];
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class)
+            ->withPivot('completed_at')
+            ->withTimestamps();
+    }
 }
