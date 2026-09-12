@@ -20,14 +20,25 @@
     .badge.error { background: #c62828; color: white; }
     pre { white-space: pre-wrap; word-break: break-word; background: rgba(128,128,128,0.1); padding: 0.75rem; border-radius: 6px; }
     .session { font-size: 0.8rem; color: #888; margin-top: 0.5rem; }
+    .row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+    .row button { margin-top: 0; }
+    .secondary { background: transparent; border: 1px solid #666; }
+    hr { border: none; border-top: 1px solid #333; margin: 1.5rem 0; }
 </style>
 </head>
 <body>
     <h1>Banorte MCP — Tester local</h1>
-    <p class="hint">Solo para desarrollo. Pega un token generado con <code>$user-&gt;createToken('mcp-session', ['mcp:read','mcp:simulate'])-&gt;accessToken</code> y llama cualquiera de las 6 tools contra <code>/mcp/banorte</code> en este mismo origen (sin CORS, sin proxies externos).</p>
+    <p class="hint">Solo para desarrollo. Llama cualquiera de las 6 tools contra <code>/mcp/banorte</code> en este mismo origen (sin CORS, sin proxies externos).</p>
+
+    <div class="row">
+        <button id="seed" class="secondary" type="button">Sembrar datos de prueba + generar token</button>
+        <span class="hint" id="seed-info"></span>
+    </div>
 
     <label for="token">Bearer token</label>
     <input id="token" type="text" placeholder="eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...">
+
+    <hr>
 
     <label for="tool">Tool</label>
     <select id="tool"></select>
@@ -35,7 +46,10 @@
     <label for="args">Argumentos (JSON)</label>
     <textarea id="args"></textarea>
 
-    <button id="run">Ejecutar</button>
+    <div class="row">
+        <button id="run" type="button">Ejecutar</button>
+        <button id="run-all" class="secondary" type="button">Ejecutar las 6 tools</button>
+    </div>
     <div class="session" id="session-info"></div>
 
     <div id="results"></div>
@@ -100,15 +114,7 @@ async function ensureSession(token) {
     sessionInfo.textContent = 'Sesión: ' + sessionId;
 }
 
-document.getElementById('run').addEventListener('click', async () => {
-    const token = tokenInput.value.trim();
-    if (!token) { alert('Pega un token primero.'); return; }
-    localStorage.setItem('banorte_mcp_token', token);
-
-    const toolName = toolSelect.value;
-    let args;
-    try { args = JSON.parse(argsBox.value || '{}'); } catch { alert('El JSON de argumentos no es válido.'); return; }
-
+async function runOne(token, toolName, args) {
     const box = document.createElement('div');
     box.className = 'result';
     box.innerHTML = '<strong>' + toolName + '</strong> — ejecutando...';
@@ -117,7 +123,7 @@ document.getElementById('run').addEventListener('click', async () => {
     try {
         await ensureSession(token);
         const { status, json } = await mcpRequest(token, {
-            jsonrpc: '2.0', id: Date.now(), method: 'tools/call',
+            jsonrpc: '2.0', id: Date.now() + '-' + toolName, method: 'tools/call',
             params: { name: toolName, arguments: args },
         });
 
@@ -132,6 +138,41 @@ document.getElementById('run').addEventListener('click', async () => {
     } catch (e) {
         box.className = 'result error';
         box.innerHTML = '<strong>' + toolName + '</strong> <span class="badge error">ERROR</span><pre>' + escapeHtml(String(e)) + '</pre>';
+    }
+}
+
+document.getElementById('run').addEventListener('click', () => {
+    const token = tokenInput.value.trim();
+    if (!token) { alert('Pega un token primero (o usa "Sembrar datos de prueba + generar token").'); return; }
+    localStorage.setItem('banorte_mcp_token', token);
+
+    let args;
+    try { args = JSON.parse(argsBox.value || '{}'); } catch { alert('El JSON de argumentos no es válido.'); return; }
+
+    runOne(token, toolSelect.value, args);
+});
+
+document.getElementById('run-all').addEventListener('click', async () => {
+    const token = tokenInput.value.trim();
+    if (!token) { alert('Pega un token primero (o usa "Sembrar datos de prueba + generar token").'); return; }
+    localStorage.setItem('banorte_mcp_token', token);
+
+    for (const [toolName, args] of Object.entries(TOOLS)) {
+        await runOne(token, toolName, args);
+    }
+});
+
+document.getElementById('seed').addEventListener('click', async () => {
+    const seedInfo = document.getElementById('seed-info');
+    seedInfo.textContent = 'Sembrando...';
+    try {
+        const resp = await fetch('/mcp-test/seed');
+        const data = await resp.json();
+        tokenInput.value = data.token;
+        localStorage.setItem('banorte_mcp_token', data.token);
+        seedInfo.textContent = 'Listo: usuario #' + data.user_id + ' (' + data.email + ') con perfil financiero, portafolio y 3 holdings (AAPL, MSFT, CETES28).';
+    } catch (e) {
+        seedInfo.textContent = 'Error al sembrar: ' + e;
     }
 });
 
