@@ -10,25 +10,25 @@ return [
     // Rendimiento anual esperado (simulado) por perfil de riesgo.
     'expected_annual_return' => [
         'conservative' => 0.065, // 6.5%
-        'moderate'     => 0.09,  // 9.0%
-        'aggressive'   => 0.125, // 12.5%
+        'moderate' => 0.09,  // 9.0%
+        'aggressive' => 0.125, // 12.5%
     ],
 
     // Distribución sugerida (%) por tipo de activo, según perfil de riesgo.
     // Los valores de cada perfil deben sumar 100.
     'asset_allocation' => [
         'conservative' => [
-            'bond'  => 80,
-            'fund'  => 20,
+            'bond' => 80,
+            'fund' => 20,
         ],
         'moderate' => [
-            'bond'  => 50,
-            'fund'  => 30,
+            'bond' => 50,
+            'fund' => 30,
             'stock' => 20,
         ],
         'aggressive' => [
-            'bond'  => 10,
-            'fund'  => 30,
+            'bond' => 10,
+            'fund' => 30,
             'stock' => 60,
         ],
     ],

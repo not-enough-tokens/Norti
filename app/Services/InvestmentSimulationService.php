@@ -28,7 +28,7 @@ class InvestmentSimulationService
         for ($month = 1; $month <= $months; $month++) {
             $amount = ($amount * (1 + $monthlyRate)) + $monthlyContribution;
             $projection[] = [
-                'month'  => $month,
+                'month' => $month,
                 'amount' => round($amount, 2),
             ];
         }
@@ -57,11 +57,11 @@ class InvestmentSimulationService
         );
 
         return [
-            'projection'      => $projection,
-            'months'          => $months,
+            'projection' => $projection,
+            'months' => $months,
             'monthly_contribution' => $monthlyContribution,
-            'annual_return'   => $annualReturn,
-            'final_amount'    => end($projection)['amount'] ?? (float) $goal->current_amount,
+            'annual_return' => $annualReturn,
+            'final_amount' => end($projection)['amount'] ?? (float) $goal->current_amount,
         ];
     }
 
@@ -76,7 +76,7 @@ class InvestmentSimulationService
 
         return [
             'reaches_goal' => $reachesGoal,
-            'shortfall'    => $reachesGoal ? 0 : round((float) $goal->target_amount - $finalAmount, 2),
+            'shortfall' => $reachesGoal ? 0 : round((float) $goal->target_amount - $finalAmount, 2),
         ];
     }
 }

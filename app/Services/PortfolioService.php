@@ -26,8 +26,8 @@ class PortfolioService
     public function createForUser(User $user, string $name, FinancialProfile $profile, float $totalAmount): Portfolio
     {
         $portfolio = Portfolio::create([
-            'user_id'     => $user->id,
-            'name'        => $name,
+            'user_id' => $user->id,
+            'name' => $name,
             'description' => "Portafolio generado según perfil {$profile->risk_tolerance}",
         ]);
 
@@ -36,17 +36,17 @@ class PortfolioService
         foreach ($allocation as $assetType => $percentage) {
             $asset = Asset::where('asset_type', $assetType)->first();
 
-            if (!$asset) {
+            if (! $asset) {
                 continue; // no hay un instrumento de ese tipo en el catálogo todavía
             }
 
             $montoAsignado = $totalAmount * ($percentage / 100);
 
             Holding::create([
-                'portfolio_id'  => $portfolio->id,
-                'asset_id'      => $asset->id,
-                'quantity'      => $montoAsignado,
-                'average_cost'  => 1,
+                'portfolio_id' => $portfolio->id,
+                'asset_id' => $asset->id,
+                'quantity' => $montoAsignado,
+                'average_cost' => 1,
             ]);
         }
 
@@ -79,6 +79,7 @@ class PortfolioService
             ->groupBy(fn (Holding $h) => $h->asset->asset_type)
             ->map(function ($holdings) use ($total) {
                 $subtotal = $holdings->sum(fn (Holding $h) => $h->quantity * $h->average_cost);
+
                 return round(($subtotal / $total) * 100, 2);
             })
             ->toArray();

@@ -16,11 +16,11 @@ class ProfileService
         return FinancialProfile::updateOrCreate(
             ['user_id' => $user->id],
             [
-                'monthly_income'            => $data['monthly_income'] ?? 0,
-                'monthly_expenses'           => $data['monthly_expenses'] ?? 0,
-                'savings'                    => $data['savings'] ?? 0,
-                'risk_tolerance'             => $data['risk_tolerance'] ?? 'moderate',
-                'investment_horizon_months'  => $data['investment_horizon_months'] ?? 36,
+                'monthly_income' => $data['monthly_income'] ?? 0,
+                'monthly_expenses' => $data['monthly_expenses'] ?? 0,
+                'savings' => $data['savings'] ?? 0,
+                'risk_tolerance' => $data['risk_tolerance'] ?? 'moderate',
+                'investment_horizon_months' => $data['investment_horizon_months'] ?? 36,
             ]
         );
     }
