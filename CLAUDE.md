@@ -106,10 +106,10 @@ Tests: usar los helpers de `Laravel\Mcp\Server\Testing\*` para cubrir — cada t
 ## Roadmap y ownership (M0–M8)
 
 - M0 Project Foundation — Laravel + Git + DB + Auth + MCP ✅ completado (Passport incluido)
-- M1 Financial Domain (Integrante A) — modelos y migraciones ✅ (mergeados a `Mcp-services`); faltan factories/seeders/relaciones adicionales en `User`
-- M2 Financial Services (Integrante A) — pendiente; M3 usa placeholders mientras tanto (ver abajo)
+- M1 Financial Domain (Integrante A) — modelos, migraciones y factories ✅ completo (mergeado a `master` vía PR #10)
+- M2 Financial Services (Integrante A) — ✅ integrado: `RiskAnalysisServiceAdapter`/`InvestmentSimulationServiceAdapter` (`app/Services/Financial/`) envuelven el `RiskAnalysisService`/`InvestmentSimulationService` reales; ya no hay placeholders
 - **M3 MCP Server — BanorteServer + Tools (Felix / Integrante B)** ✅ las 6 tools implementadas, registradas y probadas
-- M4 External Data — MarketDataProvider Mock→Real (Integrante C, twelvedata.com en curso) — cliente HTTP ya funcional, M3 ya lo consume vía `MarketDataProviderContract`
+- M4 External Data — MarketDataProvider Mock→Real (Integrante C, twelvedata.com en curso) — ⚠️ parcial: `MarketDataProviderContract` sigue bindeado a `TwelveDataMarketDataProvider` (propio de M3) y no al `TwelveDataProvider` de Integrante C, porque ese último todavía tiene `getHistoricalPrices()`/`getAssetProfile()` como stubs (ver nota en `DomainServiceProvider`); tampoco se ha probado nada contra la Supabase real, solo sqlite local/CI
 - M5 AI/Agents (Integrante C)
 - M6 Financial Education (Integrante D)
 - **M7 Security & Hardening (Felix / Integrante B)** ✅ audit log + rate limiting activos
@@ -123,9 +123,9 @@ Toda funcionalidad nueva se evalúa con 3 preguntas: ¿aporta directamente al ob
 
 ## Estado de implementación M3/M7 y cómo probar manualmente
 
-Las 6 tools (`get_financial_profile`, `get_portfolio`, `analyze_portfolio`, `get_asset_information`, `get_market_snapshot`, `simulate_investment`) están implementadas, registradas en `BanorteServer` y activas en `/mcp/banorte`. `FinancialProfileServiceContract` y `PortfolioServiceContract` corren contra Eloquent real; `RiskAnalysisServiceContract` e `InvestmentSimulationServiceContract` usan implementaciones **placeholder** explícitamente marcadas como tales en `app/Services/Financial/Placeholder*.php` — reemplazar el binding en `app/Providers/DomainServiceProvider.php` cuando Integrante A/M2 entregue el algoritmo real; ninguna tool necesita cambios. `MarketDataProviderContract` ya corre contra el `TwelveDataClient` real de M4.
+Las 6 tools (`get_financial_profile`, `get_portfolio`, `analyze_portfolio`, `get_asset_information`, `get_market_snapshot`, `simulate_investment`) están implementadas, registradas en `BanorteServer` y activas en `/mcp/banorte`. `FinancialProfileServiceContract` y `PortfolioServiceContract` corren contra Eloquent real; `RiskAnalysisServiceContract` e `InvestmentSimulationServiceContract` ya corren contra el algoritmo real de Integrante A/M2 vía `RiskAnalysisServiceAdapter`/`InvestmentSimulationServiceAdapter` (`app/Services/Financial/`) — no quedan placeholders. `MarketDataProviderContract` corre contra `TwelveDataMarketDataProvider` (adapter propio de M3 sobre `TwelveDataClient`); el `TwelveDataProvider` de Integrante C sigue con métodos stub, ver nota en `DomainServiceProvider`.
 
-Cada entorno (incluida Supabase) necesita correr su propio `php artisan passport:install` — las llaves de encriptación (`storage/oauth-*.key`) y el cliente personal-access viven en ese entorno, no se comparten vía git.
+Cada entorno (incluida Supabase) necesita correr su propio `php artisan passport:install` (o al menos `php artisan passport:keys`) — las llaves de encriptación (`storage/oauth-*.key`) y el cliente personal-access viven en ese entorno, no se comparten vía git. Sin esto, cualquier test o request que pase por Passport truena con `LogicException: Invalid key supplied`. En Windows con Herd/PHP sin la extensión `sodium`, `composer install`/`update` puede rechazar el lock file por `lcobucci/jwt` (dependencia de Passport) — Passport no usa sodium en la práctica (firma con RSA vía `openssl`), así que `composer install --ignore-platform-req=ext-sodium` es seguro.
 
 Para emitir un token de prueba y llamar al server manualmente:
 
