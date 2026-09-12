@@ -6,13 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\MarketData\ProfileRequest;
 use App\Http\Requests\MarketData\QuoteRequest;
 use App\Http\Requests\MarketData\TimeSeriesRequest;
+use App\Services\MarketData\MarketDataProvider;
 use App\Services\TwelveData\Exceptions\TwelveDataException;
-use App\Services\TwelveData\TwelveDataClient;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Arr;
 
 class MarketDataController extends Controller
 {
-    public function __construct(protected readonly TwelveDataClient $twelveData) {}
+    public function __construct(protected readonly MarketDataProvider $marketData) {}
 
     /**
      * GET /api/market-data/quote
@@ -20,8 +21,9 @@ class MarketDataController extends Controller
     public function quote(QuoteRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $symbol = Arr::pull($data, 'symbol');
 
-        return $this->respond(fn (): array => $this->twelveData->quote($data['symbol'], $data));
+        return $this->respond(fn (): array => $this->marketData->getQuote($symbol, $data));
     }
 
     /**
@@ -30,8 +32,10 @@ class MarketDataController extends Controller
     public function timeSeries(TimeSeriesRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $symbol = Arr::pull($data, 'symbol');
+        $interval = Arr::pull($data, 'interval');
 
-        return $this->respond(fn (): array => $this->twelveData->timeSeries($data['symbol'], $data['interval'], $data));
+        return $this->respond(fn (): array => $this->marketData->getHistoricalPrices($symbol, $interval, $data));
     }
 
     /**
@@ -40,8 +44,9 @@ class MarketDataController extends Controller
     public function profile(ProfileRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $symbol = Arr::pull($data, 'symbol');
 
-        return $this->respond(fn (): array => $this->twelveData->profile($data['symbol'], $data));
+        return $this->respond(fn (): array => $this->marketData->getAssetProfile($symbol, $data));
     }
 
     /**

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\MarketData\MarketDataProvider;
+use App\Services\MarketData\TwelveDataProvider;
 use App\Services\TwelveData\TwelveDataClient;
 use Illuminate\Support\ServiceProvider;
 
@@ -16,6 +18,8 @@ class AppServiceProvider extends ServiceProvider
             apiKey: (string) config('services.twelvedata.key'),
             baseUrl: (string) config('services.twelvedata.base_url'),
         ));
+
+        $this->app->bind(MarketDataProvider::class, TwelveDataProvider::class);
     }
 
     /**
