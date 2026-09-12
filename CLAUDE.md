@@ -1,159 +1,124 @@
-<laravel-boost-guidelines>
-=== foundation rules ===
+# CLAUDE.md — Banorte-MCP
 
-# Laravel Boost Guidelines
+Contexto persistente para cualquier sesión de Claude Code que trabaje en este repo. Léelo completo antes de tocar código. Refleja decisiones ya cerradas por el equipo — no las reabras salvo instrucción explícita del usuario.
 
-The Laravel Boost guidelines are specifically curated by Laravel maintainers for this application. These guidelines should be followed closely to ensure the best experience when building Laravel applications.
+## Qué es este proyecto
 
-## Foundational Context
+Plataforma de Inteligencia Financiera y Educación Financiera vía MCP — HackMTY 2026, reto Banorte x Tec de Monterrey. Flujo conceptual: `Usuario → Agente (LLM) → MCP → A2UI → Componentes`.
 
-This application is a Laravel application running on PHP 8.4. You are an expert with the Laravel ecosystem. Always use the APIs that match the installed major version of each package — do not assume a version.
+No es un chatbot financiero: es una capa de capacidades financieras interoperables que un agente de IA descubre y usa mediante MCP tools explícitas, sin acceso directo a la base de datos. Los tres pilares que deben mantenerse siempre: **MCP + dominio financiero + educación financiera**. Datos 100% sintéticos generados por el equipo (no hay dependencia de APIs bancarias reales); no es banca real, no ejecuta trading real, no da asesoría financiera regulada.
 
-Before relying on a package's API, confirm its installed version:
-- PHP packages: run `composer show --direct` to list direct dependencies with versions, or `composer show <vendor/package>` for a single package.
-- JS packages: check `package.json` for the installed versions.
+## Stack confirmado
 
-## Skills Activation
+- PHP 8.4 (compatible con `^8.3` declarado en `composer.json`), Laravel 13.
+- PostgreSQL alojado en **Supabase** — mismo connection string para dev y producción (dominio `.tech` ya adquirido para el deploy).
+- `laravel/mcp` (^0.9.5) como paquete oficial de MCP, transporte principal **Streamable HTTP** (no STDIO — el MCP Inspector en Windows rompe rutas con backslash en modo STDIO).
+- Auth: **Laravel Sanctum** (sesión web del humano) + **Laravel Passport** (OAuth para el agente de IA contra el MCP server).
+- Frontend: **Blade + Vite** — monolito de un solo dominio, sin lógica financiera en la vista. Tailwind 4.
+- Proveedor de datos de mercado real: **twelvedata.com** (M4, en curso, dueño Integrante C) — detrás de una interfaz, nunca acoplado directo.
+- Git/GitHub, Pest/PHPUnit. Redis/Docker/CI-CD son opcionales post-MVP, no bloqueantes.
 
-This project has domain-specific skills available in `**/skills/**`. You MUST activate the relevant skill whenever you work in that domain—don't wait until you're stuck.
+## Arquitectura obligatoria
 
-## Conventions
+```
+MCP Tool → Application Service → Domain/Business Logic → Models → DB / Proveedor externo
+```
 
-- You must follow all existing code conventions used in this application. When creating or editing a file, check sibling files for the correct structure, approach, and naming.
-- Use descriptive names for variables and methods. For example, `isRegisteredForDiscounts`, not `discount()`.
-- Check for existing components to reuse before writing a new one.
+Las MCP Tools **nunca** contienen lógica financiera directamente — solo reciben el request, validan scope, delegan a un Service (inyectado por constructor vía el contenedor de Laravel) y devuelven la respuesta en forma `Response::structured(['component' => ..., 'props' => ...])` para que el frontend Blade decida el layout (patrón A2UI: el LLM elige componente semántico y llena props, nunca diseña el layout).
 
-## Verification Scripts
+Namespace de MCP: `App\Mcp` (carpeta `app/Mcp`, todo minúsculas salvo la M — coincide con disco; ya se corrigió un bug de mayúsculas `app/MCP`, no repetirlo).
 
-- Do not create verification scripts or tinker when tests cover that functionality and prove they work. Unit and feature tests are more important.
+### Contracts primero (para no bloquear M3 con M1/M2/M4 de otros integrantes)
 
-## Application Structure & Architecture
+```
+app/Services/Contracts/FinancialProfileServiceContract.php
+app/Services/Contracts/PortfolioServiceContract.php
+app/Services/Contracts/RiskAnalysisServiceContract.php
+app/Services/Contracts/InvestmentSimulationServiceContract.php
+app/Services/Contracts/MarketDataProviderContract.php
+```
 
-- Stick to existing directory structure; don't create new base folders without approval.
-- Do not change the application's dependencies without approval.
+Bindear en el Service Container apuntando primero a `Fake*`/`Mock*` en `app/Services/Fakes/` (o `app/Services/MarketData/MockMarketDataProvider.php`). Cuando Integrante A (M1/M2) o Integrante C (M4) entreguen sus implementaciones reales, solo se cambia el binding — ninguna tool debería necesitar reescritura.
 
-## Frontend Bundling
+## Catálogo de MCP Tools (6, M3)
 
-- If the user doesn't see a frontend change reflected in the UI, it could mean they need to run `npm run build`, `npm run dev`, or `composer run dev`. Ask them.
+| Tool | Scope requerido | Clasificación de riesgo |
+|---|---|---|
+| `get_financial_profile` | `mcp:read` | read-only (con matiz de sensibilidad, ver abajo) |
+| `get_portfolio` | `mcp:read` | read-only |
+| `analyze_portfolio` | `mcp:read` | read-only |
+| `get_asset_information` | `mcp:read` | read-only |
+| `get_market_snapshot` | `mcp:read` | read-only |
+| `simulate_investment` | `mcp:simulate` | categoría propia (simulate) |
 
-## Documentation Files
+**Fuera del MVP, deliberadamente:** `execute_trade`, `transfer_money`, `withdraw_funds` (high-risk, no se construyen). Post-MVP si sobra tiempo: `create_financial_goal`, `update_financial_profile` (mutating, requieren autorización adicional).
 
-- You must only create documentation files if explicitly requested by the user.
+MVP mínimo demostrable si el tiempo se reduce: `get_financial_profile`, `get_portfolio`, `analyze_portfolio`; cuarta prioritaria `simulate_investment`.
 
-## Replies
+## Auth y seguridad (decidido, no reabrir)
 
-- Be concise in your explanations - focus on what's important rather than explaining obvious details.
+- **Humano ↔ app Blade:** sesión estándar de Laravel (login, cookie, CSRF). Sin tokens — no es SPA.
+- **Agente de IA ↔ MCP server:** Laravel Passport. Se emite un Personal Access Token atado al usuario autenticado en el momento en que inicia la conversación (`$user->createToken('mcp-session', ['mcp:read', 'mcp:simulate'])->accessToken`), nunca un token genérico de la app. Ruta MCP protegida con middleware `auth:api`.
+- **Scopes:** `mcp:read` (4 read-only + get_market_snapshot), `mcp:simulate` (simulate_investment). Cada tool valida su propio scope con `tokenCan()` dentro de `handle()` antes de ejecutar lógica.
+- **Rate limiting:** `RateLimiter::for('mcp', ...)` por usuario/IP, aplicado como `throttle:mcp` en la ruta de `routes/ai.php`.
+- **Audit log:** tabla `audit_logs` (`user_id`, `tool_name`, `input` jsonb sin campos sensibles, `result_summary`, `ip_address`, `created_at`). Registrar cada `tools/call`. **Nunca** loggear montos exactos ni el `FinancialProfile` completo — solo metadata (qué tool, cuándo, resultado resumido/booleano).
 
-=== boost rules ===
+### Política de datos sensibles al modelo
 
-# Laravel Boost
+`FinancialProfile` nunca se envía completo al LLM. Por defecto el LLM solo ve un resumen/generalización (categorías, no montos exactos). Mecanismo: `get_financial_profile` recibe parámetro de schema `detail: "summary" | "exact"`, default `"summary"`; la descripción del parámetro instruye al LLM a usar `"exact"` solo si el usuario lo pidió explícitamente. Limitación reconocida: el único enforcement es que el LLM siga la instrucción del schema (no hay barrera dura todavía). Mejora post-MVP si sobra tiempo: la tool siempre regresa `summary`, y un botón "Ver cifra exacta" en el componente A2UI dispara —con confirmación explícita del usuario, no del LLM— una llamada aparte que sí regresa el dato exacto (Intent-Token Handshake, mismo patrón que las acciones mutables).
 
-## Tools
+## Convenciones de código para las Tools
 
-- Laravel Boost is an MCP server with tools designed specifically for this application. Prefer Boost tools over manual alternatives like shell commands or file reads.
-- Use `database-query` to run read-only queries against the database instead of writing raw SQL in tinker.
-- Use `database-schema` to inspect table structure before writing migrations or models.
-- Use `get-absolute-url` to resolve the correct scheme, domain, and port for project URLs. Always use this before sharing a URL with the user.
-- Use `browser-logs` to read browser logs, errors, and exceptions. Only recent logs are useful, ignore old entries.
+- `schema(JsonSchema $schema): array` — usar `$schema->number()`, `->integer()`, `->string()->enum([...])`, siempre con `->description()` y `->required()` cuando aplique.
+- `handle(Request $request): Response|ResponseFactory` — **type hint obligatorio con la unión**: `Response::structured()` regresa `ResponseFactory`, no `Response`. Declarar solo `: Response` truena en runtime. Importar `Laravel\Mcp\ResponseFactory`.
+- Validar scope antes de ejecutar: `if (! $request->user()->tokenCan('mcp:read')) { return Response::error('...'); }`.
+- Registrar el server en `routes/ai.php`:
+  ```php
+  Mcp::web('/mcp/banorte', \App\Mcp\Servers\BanorteServer::class)
+      ->middleware(['auth:api']);
+  ```
 
-## Searching Documentation (IMPORTANT)
+## Comandos
 
-- Use `search-docs` before changes that depend on Laravel ecosystem APIs, behavior, configuration, or version-specific syntax. Skip it for copy-only edits and other changes where package documentation is irrelevant. Reuse sufficient results already in context instead of searching again.
-- Pass a `packages` array to scope results when you know which packages are relevant.
-- Use multiple broad, topic-based queries: `['rate limiting', 'routing rate limiting', 'routing']`. Expect the most relevant results first.
-- Do not add package names to queries because package info is already shared. Use `test resource table`, not `filament 4 test resource table`.
+```bash
+# Passport
+composer require laravel/passport   # si no está ya
+php artisan migrate                 # tablas de Passport, usa el connection string de Supabase en .env
+php artisan passport:install        # claves de encriptación + clientes personal-access/password-grant
 
-### Search Syntax
+# Scaffolding MCP
+php artisan make:mcp-server <Nombre>
+php artisan make:mcp-tool <Nombre>
 
-1. Use words for auto-stemmed AND logic: `rate limit` matches both "rate" AND "limit".
-2. Use `"quoted phrases"` for exact position matching: `"infinite scroll"` requires adjacent words in order.
-3. Combine words and phrases for mixed queries: `middleware "rate limit"`.
-4. Use multiple queries for OR logic: `queries=["authentication", "middleware"]`.
+# Testing manual del server (Streamable HTTP — NO usar STDIO en Windows)
+php artisan serve
+php artisan mcp:inspector /mcp/banorte
+```
 
-## Project Rules
+Tests: usar los helpers de `Laravel\Mcp\Server\Testing\*` para cubrir — cada tool responde con el schema esperado dado un input válido; cada tool rechaza si el token no tiene el scope requerido; `get_financial_profile` regresa `summary` por defecto y `exact` solo con `detail: "exact"`.
 
-- This project contains committed, area-grouped rules in `.ai/rules` when that directory exists (settled decisions, non-obvious traps, standing constraints). Framework and package guidelines that only apply to specific paths (testing, frontend, components) also live there, under `.ai/rules/boost` — this is not just recorded decisions, it is load-bearing guidance you have not seen inline. Before you enter plan mode or create/edit any file, you MUST first: open @.ai/rules/index.md (it maps file globs to rule files), read every rule file whose globs cover the path(s) in scope, and run `grep -rin 'keyword' .ai/rules` to catch what a path match alone misses. Do not write code until you have read and are following every matching rule. If `.ai/rules` does not exist, continue without it.
-- Record a rule with `record-rule` only when the user explicitly asks for one. Instructions for the work at hand are not rules, no matter how emphatic: "remove this typo", "use X here" are work to do, not rules to record. Never record a rule on your own initiative, as a byproduct of a change, or to summarize what you just did. When the user does ask, pass a `glob` (e.g. `app/Http/Controllers/**`), a short `title`, and a few-line `note`. Use `record-rule` rather than your native memory or notes tool, because native memory is personal and session-scoped, while only `.ai/rules` is shared with the team and persists in the repo.
+## Modelo de dominio (M1, referencia — dueño Integrante A)
 
-## Artisan
+`User`, `FinancialProfile` (ingresos, gastos, ahorro, tolerancia al riesgo, horizonte de inversión), `FinancialGoal` (nombre, cantidad objetivo, cantidad actual, fecha objetivo, prioridad, categoría), `Portfolio`, `Holding` (posición — separa el activo de que el usuario lo mantenga), `Asset` (acciones, ETFs, renta fija, efectivo), perfil de riesgo enum (Conservative/Moderate/Aggressive). M3 solo necesita el *shape* de la respuesta de estos Services, no su fórmula interna (algoritmo de riesgo, métricas de diversificación y metodología de simulación son decisión de Integrante A/M2).
 
-- Run Artisan commands directly via the command line (e.g., `php artisan route:list`). Use `php artisan list` to discover available commands and `php artisan [command] --help` to check parameters.
-- Inspect routes with `php artisan route:list`. Filter with: `--method=GET`, `--name=users`, `--path=api`, `--except-vendor`, `--only-vendor`.
-- Read configuration values using dot notation: `php artisan config:show app.name`, `php artisan config:show database.default`. Or read config files directly from the `config/` directory.
+## Roadmap y ownership (M0–M8)
 
-## Tinker
+- M0 Project Foundation — Laravel + Git + DB + Auth + MCP ✅ completado
+- M1 Financial Domain (Integrante A)
+- M2 Financial Services (Integrante A)
+- **M3 MCP Server — BanorteServer + Tools (Felix / Integrante B)** ← este repo, foco actual
+- M4 External Data — MarketDataProvider Mock→Real (Integrante C, twelvedata.com en curso)
+- M5 AI/Agents (Integrante C)
+- M6 Financial Education (Integrante D)
+- **M7 Security & Hardening (Felix / Integrante B)**
+- M8 Product & Demonstration (Integrante D)
 
-- Execute PHP in app context for debugging and testing code. Do not create models without user approval, prefer tests with factories instead. Prefer existing Artisan commands over custom tinker code.
-- Always use single quotes to prevent shell expansion: `php artisan tinker --execute 'Your::code();'`
-  - Double quotes for PHP strings inside: `php artisan tinker --execute 'User::where("active", true)->count();'`
+Ownership = responsabilidad principal, no exclusividad.
 
-=== php rules ===
+## Regla de auditoría para features nuevas
 
-# PHP
+Toda funcionalidad nueva se evalúa con 3 preguntas: ¿aporta directamente al objetivo (análisis, educación, interoperabilidad MCP, UX, seguridad)? ¿introduce una dependencia innecesaria? ¿desplaza el núcleo del proyecto (MCP + dominio financiero + educación)?
 
-- Always use curly braces for control structures, even for single-line bodies.
-- Use PHP 8 constructor property promotion: `public function __construct(public GitHub $github) { }`. Do not leave empty zero-parameter `__construct()` methods unless the constructor is private.
-- Use explicit return type declarations and type hints for all method parameters: `function isAccessible(User $user, ?string $path = null): bool`
-- Use TitleCase for Enum keys: `FavoritePerson`, `BestLake`, `Monthly`.
-- Prefer PHPDoc blocks over inline comments. Only add inline comments for exceptionally complex logic.
-- Use array shape type definitions in PHPDoc blocks.
+## Fuera de scope (explícito)
 
-=== deployments rules ===
-
-# Deployment
-
-- Laravel can be deployed using [Laravel Cloud](https://cloud.laravel.com/), which is the fastest way to deploy and scale production Laravel applications.
-- Activate the `deploying-to-cloud` skill whenever deploying to Laravel Cloud, configuring Cloud environments or resources, using the Cloud CLI, or troubleshooting Cloud deployments.
-
-=== laravel/core rules ===
-
-# Do Things the Laravel Way
-
-- Use `php artisan make:` commands to create new files (i.e. migrations, controllers, models, etc.). You can list available Artisan commands using `php artisan list` and check their parameters with `php artisan [command] --help`.
-- If you're creating a generic PHP class, use `php artisan make:class`.
-- Pass `--no-interaction` to all Artisan commands to ensure they work without user input. You should also pass the correct `--options` to ensure correct behavior.
-
-### Model Creation
-
-- When creating new models, create useful factories and seeders for them too. Ask the user if they need any other things, using `php artisan make:model --help` to check the available options.
-
-## APIs & Eloquent Resources
-
-- For APIs, default to using Eloquent API Resources and API versioning unless existing API routes do not, then you should follow existing application convention.
-
-## URL Generation
-
-- When generating links to other pages, prefer named routes and the `route()` function.
-
-## Testing
-
-- When creating models for tests, use the factories for the models. Check if the factory has custom states that can be used before manually setting up the model.
-- Faker: Use methods such as `$this->faker->word()` or `fake()->randomDigit()`. Follow existing conventions whether to use `$this->faker` or `fake()`.
-- When creating tests, make use of `php artisan make:test [options] {name}` to create a feature test, and pass `--unit` to create a unit test. Most tests should be feature tests.
-
-## Vite Error
-
-- If you receive an "Illuminate\Foundation\ViteException: Unable to locate file in Vite manifest" error, you can run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
-
-=== pint/core rules ===
-
-# Laravel Pint Code Formatter
-
-- If you have modified any PHP files, you must run `vendor/bin/pint --dirty --format agent` before finalizing changes to ensure your code matches the project's expected style.
-- Do not run `vendor/bin/pint --test --format agent`, simply run `vendor/bin/pint --format agent` to fix any formatting issues.
-
-=== phpunit/core rules ===
-
-# PHPUnit
-
-- This project uses PHPUnit. Create tests with `php artisan make:test --phpunit {name}`.
-- Do not include the test suite directory in `{name}`. Use `SomeFeatureTest`, not `Feature/SomeFeatureTest`.
-- Read the `testing-best-practices` skill for guidance on coverage, naming, structure, dependency isolation, and review.
-
-## Running Tests
-
-- Run the narrowest set of tests that covers the change. Pass a file path or `--filter=testName` to `php artisan test --compact`.
-- Rerun a test after each change to it.
-- Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
-
-</laravel-boost-guidelines>
+Banca real (cuentas, transferencias, depósitos, pagos), trading real (ejecutar órdenes, brokers), asesoría financiera profesional/regulada, sistema financiero universal (todos los mercados/instrumentos/divisas), banco digital completo.
