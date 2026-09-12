@@ -1,5 +1,7 @@
 <?php
 
+use App\Mcp\Servers\BanorteServer;
 use Laravel\Mcp\Facades\Mcp;
 
-// MCP::web('/mcp/demo', \App\MCP\Servers\PublicServer::class);
+Mcp::web('/mcp/banorte', BanorteServer::class)
+    ->middleware(['auth:api']);
