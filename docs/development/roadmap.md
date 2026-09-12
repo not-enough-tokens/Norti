@@ -44,7 +44,8 @@ Establish the technical foundation of Banorte MCP.
 - Laravel Sanctum;
 - Laravel MCP;
 - environment configuration;
-- initial project structure.
+- initial project structure;
+- GitHub Actions CI (Pint + PHPUnit on every pull request and push to `master`).
 
 ### Expected Result
 
