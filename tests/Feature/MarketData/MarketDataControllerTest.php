@@ -32,7 +32,7 @@ class MarketDataControllerTest extends TestCase
         $response->assertUnprocessable()->assertJsonValidationErrors('symbol');
     }
 
-    public function test_time_series_returns_twelvedata_payload(): void
+    public function test_time_series_returns_normalized_price_bars(): void
     {
         Http::fake([
             'api.twelvedata.com/time_series*' => Http::response([
@@ -44,7 +44,9 @@ class MarketDataControllerTest extends TestCase
 
         $response = $this->getJson('/api/market-data/time-series?symbol=AAPL&interval=1day');
 
-        $response->assertOk()->assertJsonPath('meta.symbol', 'AAPL');
+        $response->assertOk()
+            ->assertJsonPath('0.datetime', '2024-01-01')
+            ->assertJsonPath('0.close', 150);
     }
 
     public function test_time_series_requires_a_valid_interval(): void
