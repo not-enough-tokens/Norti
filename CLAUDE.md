@@ -157,3 +157,38 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
 
 </laravel-boost-guidelines>
+
+# Banorte MCP
+
+## Project Context
+
+This project is a financial intelligence and financial education
+prototype built around MCP interoperability.
+
+The authoritative project scope is documented in:
+
+`docs/architecture/project-scope.md`
+
+Read that document when making architectural decisions or when
+the requested work depends on the project's overall scope.
+
+## Architecture Principles
+
+- Laravel is the main backend.
+- Business logic belongs in Services.
+- MCP is an interoperability layer, not the business-logic layer.
+- MCP Tools should call Services rather than directly accessing the database.
+- External APIs must be accessed through provider abstractions.
+- Twelve Data is the initial market-data provider.
+- `TwelveDataClient` is responsible only for communication with Twelve Data.
+- `MarketDataProvider` defines the application's market-data contract.
+- Do not expose Twelve Data-specific structures outside the provider layer.
+- Never commit secrets or `.env`.
+
+## Development Principles
+
+- Prefer small, focused changes.
+- Follow existing Laravel conventions.
+- Write tests for new behavior.
+- Do not introduce dependencies without justification.
+- Do not modify architecture outside the requested scope without explaining why.
