@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Mcp\Concerns\LogsToolInvocation;
 use App\Services\Contracts\RiskAnalysisServiceContract;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -16,6 +17,8 @@ use Laravel\Mcp\Server\Tool;
 #[Description('Analiza el riesgo y la diversificación del portafolio del usuario autenticado: allocation por tipo de activo e índice de concentración.')]
 class AnalyzePortfolio extends Tool
 {
+    use LogsToolInvocation;
+
     public function __construct(
         private readonly RiskAnalysisServiceContract $riskAnalysis,
     ) {}
@@ -25,8 +28,12 @@ class AnalyzePortfolio extends Tool
         $user = $request->user();
 
         if (! $user?->tokenCan('mcp:read')) {
+            $this->logToolCall($request, success: false, resultSummary: 'scope_denied');
+
             return Response::error('No autorizado: se requiere el scope mcp:read.');
         }
+
+        $this->logToolCall($request, success: true);
 
         return Response::structured([
             'component' => 'risk_analysis_panel',

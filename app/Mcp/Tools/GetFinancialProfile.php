@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Mcp\Concerns\LogsToolInvocation;
 use App\Services\Contracts\FinancialProfileServiceContract;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -16,6 +17,8 @@ use Laravel\Mcp\Server\Tool;
 #[Description('Obtiene el perfil financiero del usuario autenticado: tolerancia al riesgo, horizonte de inversión y categoría de ahorro. Por defecto regresa un resumen sin montos exactos (detail=summary); usa detail=exact solo si el usuario lo pidió explícitamente.')]
 class GetFinancialProfile extends Tool
 {
+    use LogsToolInvocation;
+
     public function __construct(
         private readonly FinancialProfileServiceContract $profiles,
     ) {}
@@ -25,6 +28,8 @@ class GetFinancialProfile extends Tool
         $user = $request->user();
 
         if (! $user?->tokenCan('mcp:read')) {
+            $this->logToolCall($request, success: false, resultSummary: 'scope_denied');
+
             return Response::error('No autorizado: se requiere el scope mcp:read.');
         }
 
@@ -32,9 +37,13 @@ class GetFinancialProfile extends Tool
             'detail' => ['sometimes', 'string', 'in:summary,exact'],
         ]);
 
+        $detail = $validated['detail'] ?? 'summary';
+
+        $this->logToolCall($request, success: true, safeInput: ['detail' => $detail]);
+
         return Response::structured([
             'component' => 'financial_profile_card',
-            'props' => $this->profiles->getProfile($user, $validated['detail'] ?? 'summary'),
+            'props' => $this->profiles->getProfile($user, $detail),
         ]);
     }
 

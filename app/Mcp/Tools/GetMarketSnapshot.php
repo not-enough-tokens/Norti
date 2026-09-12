@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Mcp\Concerns\LogsToolInvocation;
 use App\Services\Contracts\Exceptions\MarketDataUnavailableException;
 use App\Services\Contracts\MarketDataProviderContract;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -17,6 +18,8 @@ use Laravel\Mcp\Server\Tool;
 #[Description('Obtiene una cotización rápida en vivo para una lista de símbolos/tickers, vía TwelveData.')]
 class GetMarketSnapshot extends Tool
 {
+    use LogsToolInvocation;
+
     public function __construct(
         private readonly MarketDataProviderContract $marketData,
     ) {}
@@ -26,6 +29,8 @@ class GetMarketSnapshot extends Tool
         $user = $request->user();
 
         if (! $user?->tokenCan('mcp:read')) {
+            $this->logToolCall($request, success: false, resultSummary: 'scope_denied');
+
             return Response::error('No autorizado: se requiere el scope mcp:read.');
         }
 
@@ -43,6 +48,8 @@ class GetMarketSnapshot extends Tool
                 $quotes[$symbol] = ['error' => $exception->getMessage()];
             }
         }
+
+        $this->logToolCall($request, success: true, safeInput: ['symbols' => $validated['symbols']]);
 
         return Response::structured([
             'component' => 'market_snapshot_grid',

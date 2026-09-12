@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Mcp\Concerns\LogsToolInvocation;
 use App\Services\Contracts\InvestmentSimulationServiceContract;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -16,6 +17,8 @@ use Laravel\Mcp\Server\Tool;
 #[Description('Simula la proyección de una inversión dado un monto inicial, un plazo en meses y un perfil de riesgo. Es una proyección aritmética simplificada, no asesoría financiera.')]
 class SimulateInvestment extends Tool
 {
+    use LogsToolInvocation;
+
     public function __construct(
         private readonly InvestmentSimulationServiceContract $simulation,
     ) {}
@@ -25,6 +28,8 @@ class SimulateInvestment extends Tool
         $user = $request->user();
 
         if (! $user?->tokenCan('mcp:simulate')) {
+            $this->logToolCall($request, success: false, resultSummary: 'scope_denied');
+
             return Response::error('No autorizado: se requiere el scope mcp:simulate.');
         }
 
@@ -39,6 +44,12 @@ class SimulateInvestment extends Tool
             (int) $validated['months'],
             $validated['risk_profile'],
         );
+
+        // Never log "amount" -- CLAUDE.md's audit policy forbids exact amounts in audit_logs.
+        $this->logToolCall($request, success: true, safeInput: [
+            'months' => $validated['months'],
+            'risk_profile' => $validated['risk_profile'],
+        ]);
 
         return Response::structured([
             'component' => 'simulation_result_card',
