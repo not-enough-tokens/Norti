@@ -41,6 +41,45 @@ class GetMarketSnapshotToolTest extends TestCase
                 ->etc());
     }
 
+    /**
+     * Los fallos por símbolo se devuelven en el payload en vez de abortar, así
+     * que el audit log registraba 'ok' aunque no se obtuviera una sola cotización.
+     */
+    public function test_audits_a_snapshot_where_every_symbol_failed(): void
+    {
+        Http::fake([
+            'api.twelvedata.com/quote*' => Http::response(['status' => 'error', 'message' => 'nope'], 400),
+        ]);
+
+        $user = User::factory()->create();
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(GetMarketSnapshot::class, ['symbols' => ['AAPL', 'TSLA']])->assertOk();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'tool_name' => 'get_market_snapshot',
+            'result_summary' => 'market_data_unavailable',
+        ]);
+        $this->assertDatabaseMissing('audit_logs', [
+            'tool_name' => 'get_market_snapshot',
+            'result_summary' => 'ok',
+        ]);
+    }
+
+    public function test_does_not_spend_a_request_per_repeated_symbol(): void
+    {
+        Http::fake([
+            'api.twelvedata.com/quote*' => Http::response(['symbol' => 'AAPL', 'close' => '150.00']),
+        ]);
+
+        $user = User::factory()->create();
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(GetMarketSnapshot::class, ['symbols' => ['AAPL', 'aapl', 'AAPL']])->assertOk();
+
+        Http::assertSentCount(1);
+    }
+
     public function test_requires_at_least_one_symbol(): void
     {
         $user = User::factory()->create();

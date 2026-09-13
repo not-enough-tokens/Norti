@@ -64,6 +64,7 @@ MVP mínimo demostrable si el tiempo se reduce: `get_financial_profile`, `get_po
 - **Agente de IA ↔ MCP server:** Laravel Passport. Se emite un Personal Access Token atado al usuario autenticado en el momento en que inicia la conversación (`$user->createToken('mcp-session', ['mcp:read', 'mcp:simulate'])->accessToken`), nunca un token genérico de la app. Ruta MCP protegida con middleware `auth:api`.
 - **Scopes:** `mcp:read` (4 read-only + get_market_snapshot), `mcp:simulate` (simulate_investment). Cada tool valida su propio scope con `tokenCan()` dentro de `handle()` antes de ejecutar lógica.
 - **Rate limiting:** `RateLimiter::for('mcp', ...)` por usuario/IP, aplicado como `throttle:mcp` en la ruta de `routes/ai.php`.
+- **`/api/market-data/*`:** protegidas con `auth:api` (Passport, el mismo guard que el MCP server, porque son rutas stateless) + `throttle:market-data`, cuyo límite sale de `services.twelvedata.rate_limit_per_minute` (default 8, el techo del plan gratuito). Estaban completamente abiertas: sin auth cualquiera podía agotar la cuota de TwelveData y tumbar el market data de toda la app. Ojo: el techo real de TwelveData es **por cuenta**, no por usuario, así que este throttle limita a cada cliente pero no garantiza el techo global.
 - **Audit log:** tabla `audit_logs` (`user_id`, `tool_name`, `input` jsonb sin campos sensibles, `result_summary`, `ip_address`, `created_at`). Registrar cada `tools/call`. **Nunca** loggear montos exactos ni el `FinancialProfile` completo — solo metadata (qué tool, cuándo, resultado resumido/booleano).
 
 ### Política de datos sensibles al modelo
@@ -102,7 +103,7 @@ Tests: usar los helpers de `Laravel\Mcp\Server\Testing\*` para cubrir — cada t
 
 ## Modelo de dominio (M1, referencia — dueño Integrante A)
 
-`User`, `FinancialProfile` (ingresos, gastos, ahorro, tolerancia al riesgo, horizonte de inversión), `FinancialGoal` (nombre, cantidad objetivo, cantidad actual, fecha objetivo, prioridad, categoría), `Portfolio`, `Holding` (posición — separa el activo de que el usuario lo mantenga), `Asset` (acciones, ETFs, renta fija, efectivo), perfil de riesgo enum (Conservative/Moderate/Aggressive). M3 solo necesita el *shape* de la respuesta de estos Services, no su fórmula interna (algoritmo de riesgo, métricas de diversificación y metodología de simulación son decisión de Integrante A/M2).
+`User`, `FinancialProfile` (ingresos, gastos, ahorro, tolerancia al riesgo, horizonte de inversión), `FinancialGoal` (`name`, `target_amount`, `current_amount`, `target_day`, `goal_type` — no hay columna de prioridad), `Portfolio`, `Holding` (posición — separa el activo de que el usuario lo mantenga), `Asset` (acciones, ETFs, renta fija, efectivo), perfil de riesgo enum (Conservative/Moderate/Aggressive). M3 solo necesita el *shape* de la respuesta de estos Services, no su fórmula interna (algoritmo de riesgo, métricas de diversificación y metodología de simulación son decisión de Integrante A/M2).
 
 ## Roadmap y ownership (M0–M8)
 
