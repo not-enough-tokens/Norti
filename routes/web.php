@@ -41,6 +41,10 @@ Route::get('/onboarding', [OnboardingController::class, 'index'])
     ->middleware('auth')
     ->name('onboarding.index');
 
+Route::post('/onboarding', [OnboardingController::class, 'chat'])
+    ->middleware(['auth', 'throttle:30,1'])
+    ->name('onboarding.chat');
+
 Route::get('/education', [EducationalTopicController::class, 'index'])
     ->middleware('auth')
     ->name('education.index');
