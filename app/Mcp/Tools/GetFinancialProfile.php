@@ -39,11 +39,14 @@ class GetFinancialProfile extends Tool
 
         $detail = $validated['detail'] ?? 'summary';
 
+        // Correr el servicio antes de auditar -- ver nota en AnalyzePortfolio.
+        $props = $this->profiles->getProfile($user, $detail);
+
         $this->logToolCall($request, success: true, safeInput: ['detail' => $detail]);
 
         return Response::structured([
             'component' => 'financial_profile_card',
-            'props' => $this->profiles->getProfile($user, $detail),
+            'props' => $props,
         ]);
     }
 

@@ -31,7 +31,11 @@ class PortfolioService
             'description' => "Portafolio generado según perfil {$profile->risk_tolerance}",
         ]);
 
-        $allocation = $this->riskAnalysisService->assetAllocation($profile->risk_tolerance);
+        // Vía suggestRiskProfile() y no con $profile->risk_tolerance crudo:
+        // la columna es un string libre y un valor no reconocido reventaría aquí.
+        $allocation = $this->riskAnalysisService->assetAllocation(
+            $this->riskAnalysisService->suggestRiskProfile($profile)
+        );
 
         foreach ($allocation as $assetType => $percentage) {
             $asset = Asset::where('asset_type', $assetType)->first();

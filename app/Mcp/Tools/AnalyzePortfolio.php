@@ -33,11 +33,16 @@ class AnalyzePortfolio extends Tool
             return Response::error('No autorizado: se requiere el scope mcp:read.');
         }
 
+        // Correr el servicio ANTES de auditar: si se loggea primero, una
+        // excepción del servicio deja un audit log que dice 'ok' para una
+        // llamada que en realidad falló.
+        $props = $this->riskAnalysis->analyze($user);
+
         $this->logToolCall($request, success: true);
 
         return Response::structured([
             'component' => 'risk_analysis_panel',
-            'props' => $this->riskAnalysis->analyze($user),
+            'props' => $props,
         ]);
     }
 
