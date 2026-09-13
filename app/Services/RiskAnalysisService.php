@@ -4,7 +4,14 @@ namespace App\Services;
 
 use App\Models\FinancialProfile;
 use InvalidArgumentException;
+use RuntimeException;
 
+/**
+ * Tabla de políticas del motor financiero: traduce un perfil de riesgo
+ * (conservative/moderate/aggressive) a los supuestos de simulación definidos
+ * en config/investment_rules.php. No analiza portafolios reales -- de eso se
+ * encarga RiskAnalysisServiceAdapter, que sí mira los holdings del usuario.
+ */
 class RiskAnalysisService
 {
     /**
@@ -12,31 +19,55 @@ class RiskAnalysisService
      */
     public function expectedAnnualReturn(string $riskTolerance): float
     {
-        $this->validateRiskLevel($riskTolerance);
+        $level = $this->requireRiskLevel($riskTolerance);
 
-        return config("investment_rules.expected_annual_return.{$riskTolerance}");
+        $return = config("investment_rules.expected_annual_return.{$level}");
+
+        if (! is_numeric($return)) {
+            throw new RuntimeException(
+                "Falta expected_annual_return para el perfil '{$level}' en config/investment_rules.php."
+            );
+        }
+
+        return (float) $return;
     }
 
     /**
      * Distribución sugerida (%) por tipo de activo para un perfil de riesgo.
-     * Ej: ['bond' => 50, 'fund' => 30, 'stock' => 20]
+     * Las llaves usan el vocabulario de `assets.asset_type`.
+     * Ej: ['bono' => 50, 'fondo' => 30, 'accion' => 20]
+     *
+     * @return array<string, float|int>
      */
     public function assetAllocation(string $riskTolerance): array
     {
-        $this->validateRiskLevel($riskTolerance);
+        $level = $this->requireRiskLevel($riskTolerance);
 
-        return config("investment_rules.asset_allocation.{$riskTolerance}");
+        $allocation = config("investment_rules.asset_allocation.{$level}");
+
+        if (! is_array($allocation) || $allocation === []) {
+            throw new RuntimeException(
+                "Falta asset_allocation para el perfil '{$level}' en config/investment_rules.php."
+            );
+        }
+
+        return $allocation;
     }
 
     /**
-     * Sugiere un perfil de riesgo cuando el usuario no lo tiene definido,
-     * basándose en su horizonte de inversión. Esto es solo un fallback:
-     * si el perfil ya tiene risk_tolerance, se respeta ese valor.
+     * Perfil de riesgo a usar para un FinancialProfile. Respeta lo que el
+     * usuario tenga guardado, pero solo si es un perfil que conocemos: la
+     * columna `risk_tolerance` es un string libre (sin enum ni check), así que
+     * puede traer '', 'Moderate' o cualquier cosa que escriba el onboarding.
+     * Cuando no es reconocible, cae al horizonte de inversión en vez de
+     * propagar un valor que reventaría en expectedAnnualReturn()/assetAllocation().
      */
     public function suggestRiskProfile(FinancialProfile $profile): string
     {
-        if (! empty($profile->risk_tolerance)) {
-            return $profile->risk_tolerance;
+        $stored = $this->normalizeRiskLevel($profile->risk_tolerance);
+
+        if ($stored !== null) {
+            return $stored;
         }
 
         $months = $profile->investment_horizon_months ?? 0;
@@ -48,10 +79,32 @@ class RiskAnalysisService
         };
     }
 
-    private function validateRiskLevel(string $riskTolerance): void
+    /**
+     * Devuelve el perfil canónico, o null si no corresponde a ninguno conocido.
+     * Tolera espacios y mayúsculas ('  Moderate ' -> 'moderate').
+     */
+    public function normalizeRiskLevel(?string $riskTolerance): ?string
     {
-        if (! in_array($riskTolerance, config('investment_rules.risk_levels'), true)) {
-            throw new InvalidArgumentException("Perfil de riesgo inválido: {$riskTolerance}");
+        if ($riskTolerance === null) {
+            return null;
         }
+
+        $normalized = strtolower(trim($riskTolerance));
+
+        return in_array($normalized, $this->riskLevels(), true) ? $normalized : null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function riskLevels(): array
+    {
+        return config('investment_rules.risk_levels', []);
+    }
+
+    private function requireRiskLevel(string $riskTolerance): string
+    {
+        return $this->normalizeRiskLevel($riskTolerance)
+            ?? throw new InvalidArgumentException("Perfil de riesgo inválido: {$riskTolerance}");
     }
 }

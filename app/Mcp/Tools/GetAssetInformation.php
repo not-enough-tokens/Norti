@@ -39,7 +39,11 @@ class GetAssetInformation extends Tool
             'symbol' => ['required', 'string', 'regex:/^[A-Za-z0-9.\-]{1,15}$/'],
         ]);
 
-        $symbol = $validated['symbol'];
+        // Los tickers del catálogo se guardan en mayúsculas y el `=` de Postgres
+        // distingue mayúsculas: sin normalizar, 'aapl' no encontraba el Asset
+        // 'AAPL' y la tool respondía local_asset => null para un símbolo que sí
+        // está en el catálogo.
+        $symbol = strtoupper($validated['symbol']);
         $asset = Asset::where('symbol', $symbol)->first();
 
         try {

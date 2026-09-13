@@ -13,20 +13,9 @@ use App\Services\RiskAnalysisService;
  * how to recommend an allocation for a risk profile, not analyze existing
  * holdings) but the recommended target allocation and risk-profile suggestion
  * now come from the real service instead of a placeholder.
- *
- * NOTE: RiskAnalysisService::assetAllocation() returns English keys
- * (bond/fund/stock) while Asset::asset_type uses Spanish (accion/bono/fondo/
- * efectivo) -- ASSET_TYPE_TRANSLATIONS below bridges that until the team
- * unifies the vocabulary.
  */
 class RiskAnalysisServiceAdapter implements RiskAnalysisServiceContract
 {
-    private const ASSET_TYPE_TRANSLATIONS = [
-        'bond' => 'bono',
-        'fund' => 'fondo',
-        'stock' => 'accion',
-    ];
-
     public function __construct(
         private readonly PortfolioServiceContract $portfolios,
         private readonly RiskAnalysisService $riskAnalysis,
@@ -77,9 +66,13 @@ class RiskAnalysisServiceAdapter implements RiskAnalysisServiceContract
 
         return [
             'has_holdings' => true,
-            'allocation_by_asset_type' => $allocation,
+            'allocation_by_asset_type' => $this->withEveryAssetType($allocation),
             'diversification_score' => round(1 - $herfindahl, 4),
             'concentration_warning' => max($allocation) > 50.0,
+            // Significa "ningún holding se quedó sin valuar", no "todo se
+            // cotizó en vivo": el efectivo se valúa a valor facial sin tocar el
+            // proveedor. El detalle exacto por posición está en el
+            // `valuation_source` de cada holding.
             'priced_with_live_market_data' => ! $hasUnpricedHoldings,
             'risk_tolerance' => $riskTolerance,
             'recommended_allocation_by_asset_type' => $recommendedAllocation,
@@ -98,13 +91,29 @@ class RiskAnalysisServiceAdapter implements RiskAnalysisServiceContract
         }
 
         $riskTolerance = $this->riskAnalysis->suggestRiskProfile($profile);
-        $allocation = $this->riskAnalysis->assetAllocation($riskTolerance);
 
-        $translated = [];
-        foreach ($allocation as $type => $percentage) {
-            $translated[self::ASSET_TYPE_TRANSLATIONS[$type] ?? $type] = $percentage;
+        return [
+            $riskTolerance,
+            $this->withEveryAssetType($this->riskAnalysis->assetAllocation($riskTolerance)),
+        ];
+    }
+
+    /**
+     * Rellena con 0 los tipos de activo que la distribución no menciona, para
+     * que la real y la recomendada siempre tengan las mismas llaves y el
+     * componente A2UI pueda compararlas lado a lado. Sin esto, un usuario 100%
+     * en efectivo veía un bucket `efectivo` en su distribución real que no
+     * existía en la recomendada -- ver ADR 005, opción B.
+     *
+     * @param  array<string, float|int>  $allocation
+     * @return array<string, float|int>
+     */
+    private function withEveryAssetType(array $allocation): array
+    {
+        foreach (config('investment_rules.asset_types', []) as $assetType) {
+            $allocation[$assetType] ??= 0;
         }
 
-        return [$riskTolerance, $translated];
+        return $allocation;
     }
 }

@@ -38,5 +38,11 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('mcp', fn (Request $request): Limit => Limit::perMinute(
             (int) config('mcp.rate_limit_per_minute')
         )->by($request->user()?->id ?: $request->ip()));
+
+        // /api/market-data/* es un proxy directo a una API de terceros de cuota
+        // limitada, así que necesita un límite mucho más estricto que el de MCP.
+        RateLimiter::for('market-data', fn (Request $request): Limit => Limit::perMinute(
+            (int) config('services.twelvedata.rate_limit_per_minute')
+        )->by($request->user()?->id ?: $request->ip()));
     }
 }
