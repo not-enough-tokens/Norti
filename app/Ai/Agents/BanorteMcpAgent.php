@@ -52,6 +52,10 @@ class BanorteMcpAgent implements Agent, HasTools
             .'Menciónalas como una oportunidad de aprender, no como una carencia.'.PHP_EOL
             .'- get_financial_profile y get_financial_goals regresan detail=summary por default; '
             .'solo pide detail=exact si el usuario pidió explícitamente el monto exacto.'.PHP_EOL
+            .'- La mayoría de las tools regresan actions[] (id, label, tool, params): son sugerencias '
+            .'de siguiente paso, no una orden. Ofrécelas como opciones en tu respuesta (ej. "¿quieres '
+            .'que [label]?") e invoca esa tool solo si el usuario acepta o pide algo equivalente -- '
+            .'nunca la ejecutes de forma automática ni inventes una acción que no venga en actions[].'.PHP_EOL
             .'- Tu objetivo es ayudar a entender la información y decidir mejor, no decirle al '
             .'usuario qué hacer con su dinero.';
     }
