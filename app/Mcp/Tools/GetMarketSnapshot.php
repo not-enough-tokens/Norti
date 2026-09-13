@@ -39,17 +39,35 @@ class GetMarketSnapshot extends Tool
             'symbols.*' => ['string', 'regex:/^[A-Za-z0-9.\-]{1,15}$/'],
         ]);
 
-        $quotes = [];
+        // array_unique: el mismo símbolo repetido gastaba una llamada por
+        // repetición contra el límite de 8 req/min del plan gratuito.
+        $symbols = array_values(array_unique(array_map(strtoupper(...), $validated['symbols'])));
 
-        foreach ($validated['symbols'] as $symbol) {
+        $quotes = [];
+        $failed = 0;
+
+        foreach ($symbols as $symbol) {
             try {
                 $quotes[$symbol] = $this->marketData->quote($symbol);
             } catch (MarketDataUnavailableException $exception) {
                 $quotes[$symbol] = ['error' => $exception->getMessage()];
+                $failed++;
             }
         }
 
-        $this->logToolCall($request, success: true, safeInput: ['symbols' => $validated['symbols']]);
+        // Los errores por símbolo se devuelven en el payload en vez de abortar,
+        // pero el audit log decía 'ok' aunque no se hubiera obtenido una sola
+        // cotización. Registrar lo que realmente pasó.
+        $this->logToolCall(
+            $request,
+            success: $failed < count($symbols),
+            safeInput: ['symbols' => $symbols, 'failed_count' => $failed],
+            resultSummary: match (true) {
+                $failed === 0 => 'ok',
+                $failed === count($symbols) => 'market_data_unavailable',
+                default => 'partial_market_data',
+            },
+        );
 
         return Response::structured([
             'component' => 'market_snapshot_grid',

@@ -38,6 +38,11 @@ return [
     'twelvedata' => [
         'key' => env('TWELVE_DATA_API_KEY'),
         'base_url' => env('TWELVE_DATA_BASE_URL', 'https://api.twelvedata.com'),
+
+        // El plan gratuito de TwelveData corta en 8 req/min para TODA la cuenta.
+        // Este límite es por usuario, así que no puede garantizar el techo de
+        // arriba por sí solo -- lo que evita es que un solo cliente lo agote.
+        'rate_limit_per_minute' => env('TWELVE_DATA_RATE_LIMIT_PER_MINUTE', 8),
     ],
 
 ];

@@ -103,6 +103,42 @@ class AnalyzePortfolioToolTest extends TestCase
     }
 
     /**
+     * ADR 005 opción B: la distribución real y la recomendada deben traer
+     * siempre las mismas llaves para poder compararse. Antes, un usuario 100%
+     * en efectivo veía un bucket `efectivo` que no existía del otro lado.
+     */
+    public function test_both_allocations_expose_the_same_asset_type_keys(): void
+    {
+        Http::fake([
+            'api.twelvedata.com/quote*' => Http::response(['symbol' => 'MXNCASH', 'close' => '1.00']),
+        ]);
+
+        $user = User::factory()->create();
+        FinancialProfile::factory()->for($user)->create(['risk_tolerance' => 'conservative']);
+
+        $portfolio = Portfolio::factory()->for($user)->create();
+        $cash = Asset::factory()->create(['symbol' => 'MXNCASH', 'asset_type' => 'efectivo']);
+        Holding::factory()->for($portfolio)->for($cash)->create(['quantity' => 50_000, 'average_cost' => 1]);
+
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(AnalyzePortfolio::class, [])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json
+                ->where('props.allocation_by_asset_type.efectivo', 100)
+                ->where('props.allocation_by_asset_type.bono', 0)
+                ->where('props.allocation_by_asset_type.fondo', 0)
+                ->where('props.allocation_by_asset_type.accion', 0)
+                // La calibración de Integrante A se respeta: conservative sigue
+                // siendo 80/20 bono/fondo, solo se hace explícito el 0% efectivo.
+                ->where('props.recommended_allocation_by_asset_type.bono', 80)
+                ->where('props.recommended_allocation_by_asset_type.fondo', 20)
+                ->where('props.recommended_allocation_by_asset_type.efectivo', 0)
+                ->where('props.recommended_allocation_by_asset_type.accion', 0)
+                ->etc());
+    }
+
+    /**
      * risk_tolerance es un string libre en la BD (sin enum ni check), así que
      * un valor que no esté en investment_rules.risk_levels es alcanzable --
      * antes hacía que la tool devolviera un error con la excepción interna.

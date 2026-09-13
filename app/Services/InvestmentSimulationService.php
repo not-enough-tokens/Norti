@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\FinancialGoal;
 use App\Models\FinancialProfile;
 use Carbon\Carbon;
+use InvalidArgumentException;
 
 class InvestmentSimulationService
 {
@@ -40,14 +41,39 @@ class InvestmentSimulationService
      * Arma la proyección completa para una meta específica, usando los
      * datos del perfil financiero del usuario (capacidad de ahorro,
      * perfil de riesgo, monto inicial ya ahorrado).
+     *
+     * Si la fecha objetivo ya pasó no hay nada que proyectar: se regresa
+     * `is_overdue => true` con el monto actual. Antes el `max(1, ...)`
+     * convertía una meta vencida en una proyección de un mes hacia el futuro,
+     * indistinguible de una meta vigente.
      */
     public function projectForGoal(FinancialGoal $goal, FinancialProfile $profile): array
     {
+        if ($goal->user_id !== $profile->user_id) {
+            throw new InvalidArgumentException(
+                'La meta y el perfil financiero pertenecen a usuarios distintos.'
+            );
+        }
+
         $monthlyContribution = $this->profileService->monthlySavingsCapacity($profile);
         $annualReturn = $this->riskAnalysisService->expectedAnnualReturn(
             $this->riskAnalysisService->suggestRiskProfile($profile)
         );
-        $months = max(1, (int) round(Carbon::now()->diffInMonths(Carbon::parse($goal->target_day))));
+
+        $months = (int) floor(
+            Carbon::now()->startOfDay()->diffInMonths(Carbon::parse($goal->target_day)->startOfDay())
+        );
+
+        if ($months <= 0) {
+            return [
+                'projection' => [],
+                'months' => 0,
+                'is_overdue' => true,
+                'monthly_contribution' => $monthlyContribution,
+                'annual_return' => $annualReturn,
+                'final_amount' => (float) $goal->current_amount,
+            ];
+        }
 
         $projection = $this->project(
             initialAmount: (float) $goal->current_amount,
@@ -59,6 +85,7 @@ class InvestmentSimulationService
         return [
             'projection' => $projection,
             'months' => $months,
+            'is_overdue' => false,
             'monthly_contribution' => $monthlyContribution,
             'annual_return' => $annualReturn,
             'final_amount' => end($projection)['amount'] ?? (float) $goal->current_amount,
@@ -71,12 +98,15 @@ class InvestmentSimulationService
      */
     public function evaluateGoal(FinancialGoal $goal, array $simulation): array
     {
-        $finalAmount = $simulation['final_amount'];
+        $finalAmount = (float) ($simulation['final_amount'] ?? $goal->current_amount);
         $reachesGoal = $finalAmount >= (float) $goal->target_amount;
 
         return [
             'reaches_goal' => $reachesGoal,
-            'shortfall' => $reachesGoal ? 0 : round((float) $goal->target_amount - $finalAmount, 2),
+            'shortfall' => $reachesGoal ? 0.0 : round((float) $goal->target_amount - $finalAmount, 2),
+            // Una meta vencida que no se alcanzó ya no es "te falta ahorrar":
+            // el consumidor necesita distinguirlo para no sugerir un plan.
+            'is_overdue' => (bool) ($simulation['is_overdue'] ?? false),
         ];
     }
 }

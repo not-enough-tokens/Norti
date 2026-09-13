@@ -37,9 +37,23 @@ class EloquentPortfolioService implements PortfolioServiceContract
     {
         $asset = $holding->asset;
         $quantity = (float) $holding->quantity;
-        $costBasis = $quantity * (float) $holding->average_cost;
-        $currentPrice = $this->currentPrice($asset->symbol);
-        $marketValue = $currentPrice !== null ? $quantity * $currentPrice : null;
+        $averageCost = (float) $holding->average_cost;
+        $costBasis = $quantity * $averageCost;
+
+        // El efectivo no cotiza: pedirle precio al proveedor siempre falla,
+        // gasta una llamada de la cuota y lo deja marcado como no valuado. Se
+        // valúa a valor facial, que para efectivo es exacto por definición.
+        if ($this->isQuotable($asset->asset_type)) {
+            $currentPrice = $this->currentPrice($asset->symbol);
+            $marketValue = $currentPrice !== null ? $quantity * $currentPrice : null;
+            $unrealizedGain = $marketValue !== null ? $marketValue - $costBasis : null;
+            $valuationSource = $marketValue !== null ? 'market' : null;
+        } else {
+            $currentPrice = $averageCost;
+            $marketValue = $costBasis;
+            $unrealizedGain = 0.0;
+            $valuationSource = 'face_value';
+        }
 
         return [
             'symbol' => $asset->symbol,
@@ -47,12 +61,20 @@ class EloquentPortfolioService implements PortfolioServiceContract
             'asset_type' => $asset->asset_type,
             'currency' => $asset->currency,
             'quantity' => $quantity,
-            'average_cost' => (float) $holding->average_cost,
+            'average_cost' => $averageCost,
             'cost_basis' => $costBasis,
             'current_price' => $currentPrice,
             'market_value' => $marketValue,
-            'unrealized_gain' => $marketValue !== null ? $marketValue - $costBasis : null,
+            'unrealized_gain' => $unrealizedGain,
+            // 'market' | 'face_value' | null (no se pudo valuar) -- para que el
+            // consumidor no confunda "valuado a valor facial" con "cotizado".
+            'valuation_source' => $valuationSource,
         ];
+    }
+
+    private function isQuotable(string $assetType): bool
+    {
+        return ! in_array($assetType, config('investment_rules.non_quotable_asset_types', []), true);
     }
 
     private function currentPrice(string $symbol): ?float
