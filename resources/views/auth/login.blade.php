@@ -9,8 +9,31 @@
 
 <h1>Iniciar sesión</h1>
 
-<p>El formulario de login todavía no está implementado. Esta página existe solo para que las rutas protegidas con
-    <code>auth</code> middleware puedan redirigir aquí sin error.</p>
+@if ($errors->any())
+    <ul>
+        @foreach ($errors->all() as $error)
+            <li>{{ $error }}</li>
+        @endforeach
+    </ul>
+@endif
+
+<form method="POST" action="{{ route('login.store') }}">
+    @csrf
+
+    <label for="email">Correo</label>
+    <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus>
+
+    <label for="password">Contraseña</label>
+    <input id="password" type="password" name="password" required>
+
+    <label>
+        <input type="checkbox" name="remember"> Recordarme
+    </label>
+
+    <button type="submit">Entrar</button>
+</form>
+
+<p><a href="{{ route('register') }}">Crear una cuenta</a></p>
 
 </body>
 </html>

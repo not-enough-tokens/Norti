@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\EducationalTopicController;
 use App\Http\Controllers\McpTokenController;
+use App\Http\Controllers\OnboardingController;
 use App\Models\Asset;
 use App\Models\AuditLog;
 use App\Models\FinancialProfile;
@@ -14,10 +17,28 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Placeholder so Laravel's default auth middleware has a valid `login`
-// route to redirect guests to -- no real login form/session logic yet,
-// that's a separate task for whoever owns human auth.
-Route::get('/login', fn () => view('auth.login'))->name('login');
+Route::middleware('guest')->group(function (): void {
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('login.store');
+
+    Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
+    Route::post('/register', [RegisteredUserController::class, 'store'])->name('register.store');
+});
+
+// `login` (above) is also the fallback redirect target for Laravel's
+// default auth middleware, so keep that route name even after this
+// real form replaces the earlier placeholder.
+Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
+    ->middleware('auth')
+    ->name('logout');
+
+// Post-login/register landing spot -- see OnboardingController for why
+// this exists as a dedicated step instead of going straight to /education.
+Route::get('/onboarding', [OnboardingController::class, 'index'])
+    ->middleware('auth')
+    ->name('onboarding.index');
 
 Route::get('/education', [EducationalTopicController::class, 'index'])
     ->middleware('auth')

@@ -59,7 +59,8 @@ MVP mínimo demostrable si el tiempo se reduce: `get_financial_profile`, `get_po
 
 ## Auth y seguridad (decidido, no reabrir)
 
-- **Humano ↔ app Blade:** sesión estándar de Laravel (login, cookie, CSRF). Sin tokens — no es SPA.
+- **Humano ↔ app Blade:** sesión estándar de Laravel (login, cookie, CSRF). Sin tokens — no es SPA. Implementado en `app/Http/Controllers/Auth/` (`AuthenticatedSessionController`, `RegisteredUserController`) + rutas `login`/`register`/`logout` en `routes/web.php`, sin paquete externo (Breeze/Fortify) para no agregar una dependencia innecesaria.
+- **Flujo post-login/registro:** ambos redirigen a `route('onboarding.index')` (`OnboardingController`), nunca directo a `/education`. Hoy `onboarding.index` es un placeholder (`resources/views/onboarding/index.blade.php`) con un link a continuar — el flujo real de onboarding (preguntas para detectar la intención del usuario: aprender, invertir, dar seguimiento a una meta) se construye después, en este mismo punto de entrada, sin tocar el flujo de auth de nuevo.
 - **Agente de IA ↔ MCP server:** Laravel Passport. Se emite un Personal Access Token atado al usuario autenticado en el momento en que inicia la conversación (`$user->createToken('mcp-session', ['mcp:read', 'mcp:simulate'])->accessToken`), nunca un token genérico de la app. Ruta MCP protegida con middleware `auth:api`.
 - **Scopes:** `mcp:read` (4 read-only + get_market_snapshot), `mcp:simulate` (simulate_investment). Cada tool valida su propio scope con `tokenCan()` dentro de `handle()` antes de ejecutar lógica.
 - **Rate limiting:** `RateLimiter::for('mcp', ...)` por usuario/IP, aplicado como `throttle:mcp` en la ruta de `routes/ai.php`.
