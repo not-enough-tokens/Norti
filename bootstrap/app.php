@@ -15,6 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Closure: route() no existe todavía mientras bootstrap/app.php se evalúa.
         $middleware->redirectUsersTo(fn () => route('onboarding.index'));
+
+        // La app nunca recibe tráfico directo en producción (Laravel Cloud,
+        // o cualquier PaaS) -- siempre pasa por el proxy/load balancer de la
+        // plataforma. Sin confiar en él, Laravel cree que cada request es
+        // http:// (rompe cookies "secure", CSRF y las URLs que genera).
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
