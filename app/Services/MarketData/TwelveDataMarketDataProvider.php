@@ -20,19 +20,34 @@ class TwelveDataMarketDataProvider implements MarketDataProviderContract
         private readonly TwelveDataClient $client,
     ) {}
 
-    public function quote(string $symbol): array
+    public function quote(string $symbol, array $parameters = []): array
     {
-        return $this->cached('quote', $symbol, fn (): array => $this->call(fn (): array => $this->client->quote($symbol)));
+        return $this->cached('quote', $symbol, $parameters, fn (): array => $this->call(fn (): array => $this->client->quote($symbol, $parameters)));
     }
 
-    public function profile(string $symbol): array
+    public function profile(string $symbol, array $parameters = []): array
     {
-        return $this->cached('profile', $symbol, fn (): array => $this->call(fn (): array => $this->client->profile($symbol)));
+        return $this->cached('profile', $symbol, $parameters, fn (): array => $this->call(fn (): array => $this->client->profile($symbol, $parameters)));
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function timeSeries(string $symbol, string $interval, array $parameters = []): array
     {
-        return $this->call(fn (): array => $this->client->timeSeries($symbol, $interval, $parameters));
+        $data = $this->call(fn (): array => $this->client->timeSeries($symbol, $interval, $parameters));
+
+        return array_map(
+            fn (array $value): array => [
+                'datetime' => $value['datetime'] ?? null,
+                'open' => isset($value['open']) ? (float) $value['open'] : null,
+                'high' => isset($value['high']) ? (float) $value['high'] : null,
+                'low' => isset($value['low']) ? (float) $value['low'] : null,
+                'close' => isset($value['close']) ? (float) $value['close'] : null,
+                'volume' => isset($value['volume']) ? (int) $value['volume'] : null,
+            ],
+            $data['values'] ?? [],
+        );
     }
 
     /**
@@ -53,15 +68,20 @@ class TwelveDataMarketDataProvider implements MarketDataProviderContract
      * per test, and a real cache store would leak a stale fake response from
      * one test into the next.
      *
+     * @param  array<string, mixed>  $parameters
      * @param  callable(): array<string, mixed>  $callback
      * @return array<string, mixed>
      */
-    private function cached(string $method, string $symbol, callable $callback): array
+    private function cached(string $method, string $symbol, array $parameters, callable $callback): array
     {
         if (app()->runningUnitTests()) {
             return $callback();
         }
 
-        return Cache::remember("twelvedata:{$method}:{$symbol}", self::CACHE_TTL_SECONDS, $callback);
+        $cacheKey = $parameters === []
+            ? "twelvedata:{$method}:{$symbol}"
+            : "twelvedata:{$method}:{$symbol}:".md5(serialize($parameters));
+
+        return Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, $callback);
     }
 }
