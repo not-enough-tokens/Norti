@@ -26,4 +26,17 @@ class OnboardingControllerTest extends TestCase
         $response->assertOk();
         $response->assertViewHas('user', fn (User $viewUser) => $viewUser->is($user));
     }
+
+    public function test_welcome_screen_confirms_the_login_right_after_signing_in(): void
+    {
+        $user = User::factory()->create(['name' => 'Ana López']);
+
+        $response = $this->actingAs($user)
+            ->withSession(['status' => 'Sesión iniciada de forma correcta'])
+            ->get('/onboarding');
+
+        $response->assertOk();
+        $response->assertSee('Sesión iniciada de forma correcta');
+        $response->assertSee('Ana López');
+    }
 }

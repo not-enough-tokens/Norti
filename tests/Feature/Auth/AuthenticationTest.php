@@ -28,6 +28,7 @@ class AuthenticationTest extends TestCase
 
         $this->assertAuthenticatedAs($user);
         $response->assertRedirect(route('onboarding.index'));
+        $response->assertSessionHas('status', 'Sesión iniciada de forma correcta');
     }
 
     public function test_users_cannot_authenticate_with_invalid_password(): void
@@ -48,7 +49,7 @@ class AuthenticationTest extends TestCase
 
         $response = $this->actingAs($user)->get('/login');
 
-        $response->assertRedirect();
+        $response->assertRedirect(route('onboarding.index'));
     }
 
     public function test_users_can_logout(): void

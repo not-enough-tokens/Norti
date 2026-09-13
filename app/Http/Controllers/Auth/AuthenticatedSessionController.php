@@ -21,6 +21,10 @@ class AuthenticatedSessionController extends Controller
         $credentials = $request->validate([
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
+        ], [
+            'email.required' => 'Escribe tu correo electrónico.',
+            'email.email' => 'Escribe un correo electrónico válido.',
+            'password.required' => 'Escribe tu contraseña.',
         ]);
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
@@ -31,7 +35,8 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('onboarding.index'));
+        return redirect()->intended(route('onboarding.index'))
+            ->with('status', 'Sesión iniciada de forma correcta');
     }
 
     public function destroy(Request $request): RedirectResponse
