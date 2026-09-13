@@ -7,7 +7,7 @@ use App\Services\MarketData\TwelveDataMarketDataProvider;
 use App\Services\TwelveData\Exceptions\TwelveDataException;
 use App\Services\TwelveData\TwelveDataClient;
 use Mockery;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class TwelveDataMarketDataProviderTest extends TestCase
 {
