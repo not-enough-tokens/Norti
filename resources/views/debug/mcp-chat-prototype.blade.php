@@ -26,6 +26,13 @@
     .badge.negative { background: #c62828; color: white; }
     .progress { background: rgba(128,128,128,0.2); border-radius: 999px; height: 0.5rem; overflow: hidden; margin-top: 0.35rem; }
     .progress > div { background: #1565c0; height: 100%; }
+    .pill { display: inline-block; padding: 0.05rem 0.5rem; border-radius: 999px; font-size: 0.7rem; border: 1px solid rgba(128,128,128,0.4); margin-right: 0.3rem; }
+    .alert { border-radius: 6px; padding: 0.6rem 0.8rem; font-size: 0.85rem; margin-top: 0.5rem; }
+    .alert.warning { background: rgba(178,106,0,0.15); border: 1px solid #b26a00; }
+    .alert.neutral { background: rgba(128,128,128,0.15); border: 1px solid #888; }
+    .topic-row { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid rgba(128,128,128,0.2); }
+    .topic-row.recommended { background: rgba(21,101,192,0.08); border-radius: 6px; padding: 0.5rem; }
+    svg.chart { max-width: 100%; }
 </style>
 </head>
 <body>
@@ -34,8 +41,9 @@
         Solo para desarrollo. Corre <code>BanorteMcpAgent</code> de verdad y muestra, además de su respuesta en
         texto, el <code>component</code>/<code>props</code> de cada tool que invocó -- capturado vía
         <code>App\Ai\Listeners\CaptureStructuredToolResults</code> (evento <code>Laravel\Ai\Events\ToolInvoked</code>
-        del SDK), sin tocar el agente. Solo <code>financial_profile_card</code> y <code>portfolio_summary</code>
-        tienen una vista real; el resto cae en un volcado JSON.
+        del SDK), sin tocar el agente. Las 11 tools que regresan un componente A2UI tienen vista real;
+        <code>tool_error</code> no puede pasar por aquí (<code>Response::error()</code> nunca llena
+        <code>structuredContent</code>) y cualquier otra cosa cae en un volcado JSON.
     </p>
 
     <form method="POST" action="{{ route('mcp.debug-chat.submit') }}">
