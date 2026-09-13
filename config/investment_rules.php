@@ -40,4 +40,12 @@ return [
 
     // Perfiles de riesgo válidos, en orden de menor a mayor riesgo.
     'risk_levels' => ['conservative', 'moderate', 'aggressive'],
+
+    // Tipos de activo que maneja el catálogo (`assets.asset_type`). La
+    // distribución recomendada se rellena con 0 para los que no menciona, de
+    // modo que la distribución real y la recomendada siempre tengan las mismas
+    // llaves y se puedan comparar lado a lado -- ver ADR 005, opción B.
+    // `efectivo` a propósito no aparece en ningún perfil de asset_allocation:
+    // esa calibración es de Integrante A y no se cambió aquí.
+    'asset_types' => ['accion', 'bono', 'fondo', 'efectivo'],
 ];

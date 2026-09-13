@@ -2,9 +2,19 @@
 
 ## Status
 
-**Propuesto** — pendiente de decisión con Integrante A (dueño de M2 / motor financiero).
+**Aceptado — opción B.**
 
-Este documento no cambia código. Existe para tener la conversación con datos en vez de impresiones.
+La calibración de `asset_allocation` no se tocó: sigue siendo la de Integrante A.
+Lo que se agregó es el relleno con `0` de los tipos de activo que la distribución
+no menciona, para que la distribución real y la recomendada siempre tengan las
+mismas llaves.
+
+Implementado en `RiskAnalysisServiceAdapter::withEveryAssetType()`, con la lista
+canónica de tipos en `config('investment_rules.asset_types')`. Cubierto por
+`AnalyzePortfolioToolTest::test_both_allocations_expose_the_same_asset_type_keys()`.
+
+Queda abierto para Integrante A si más adelante quiere pasar a la opción A
+(asignar un porcentaje real de efectivo por perfil) o a la C.
 
 ## Contexto
 
@@ -82,17 +92,23 @@ compite con los instrumentos de inversión.
 - En contra: es el cambio más grande; toca el adapter, el componente A2UI y
   probablemente `concentration_warning`.
 
-## Recomendación
+## Decisión
 
-**Opción A** para el MVP si Integrante A está cómodo ajustando los porcentajes, o
-**B** si prefiere no tocar la calibración antes del demo. La **C** es la correcta
-a mediano plazo, pero no cabe en el tiempo restante del hackathon.
+**Opción B.** Resuelve el problema de comparabilidad sin que nadie más que
+Integrante A toque su calibración, que es justo la línea que no queríamos cruzar
+antes del demo.
 
-Lo que no se debe dejar como está es la combinación actual: un usuario 100% en
-efectivo recibe una alerta de concentración y una recomendación que no menciona
-el efectivo, sin ninguna indicación de qué hacer al respecto.
+La **C** sigue siendo la correcta a mediano plazo — el efectivo no es una apuesta
+de inversión y además arreglaría lo del símbolo no cotizable — pero no cabe en el
+tiempo restante del hackathon.
+
+Lo que sí queda pendiente de conversación: con la opción B, un usuario 100% en
+efectivo sigue recibiendo una recomendación de 0% efectivo. Ya es *legible*
+(antes ni siquiera aparecía la categoría), pero sigue siendo una postura
+financiera discutible para un perfil conservador. Esa parte es de Integrante A.
 
 ## Quién decide
 
 Integrante A (M2). Los porcentajes de `asset_allocation` y la metodología de
-riesgo son suyos; este documento solo levanta el hueco y sus consecuencias.
+riesgo son suyos; este documento levantó el hueco y sus consecuencias, y la
+opción B se eligió precisamente por no invadir esa decisión.
