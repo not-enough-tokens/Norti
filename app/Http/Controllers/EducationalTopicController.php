@@ -4,29 +4,29 @@ namespace App\Http\Controllers;
 
 use App\Models\EducationalTopic;
 use App\Models\User;
-use App\Services\FinancialEducationIntegrationService;
 use App\Services\FinancialEducationService;
 use Illuminate\Http\Request;
 
 class EducationalTopicController extends Controller
 {
-    public function index(
-        Request $request,
-        FinancialEducationService $service,
-        FinancialEducationIntegrationService $integrationService
-    ) {
+    /**
+     * Nota: aquí se construía también un $financialContext vía
+     * FinancialEducationIntegrationService y se pasaba a la vista, que nunca lo
+     * usó -- tres queries por carga cuyo resultado se descartaba, y un
+     * FinancialProfile con montos exactos suelto en el scope de la vista.
+     *
+     * El servicio sigue existiendo: integrar el contexto financiero en la
+     * sección de educación es intención real de M6. Cuando esa vista se
+     * construya, se vuelve a inyectar aquí de forma deliberada.
+     */
+    public function index(Request $request, FinancialEducationService $service)
+    {
         $user = $request->user();
 
         abort_unless($user instanceof User, 401);
 
-        $learningPath = $service->getLearningPath($user);
-
-        $financialContext = $integrationService
-            ->getFinancialContext($user);
-
         return view('education.index', [
-            'learningPath' => $learningPath,
-            'financialContext' => $financialContext,
+            'learningPath' => $service->getLearningPath($user),
         ]);
     }
 
