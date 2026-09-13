@@ -5,6 +5,7 @@ namespace App\Mcp\Servers;
 use App\Mcp\Tools\AnalyzePortfolio;
 use App\Mcp\Tools\GetAssetInformation;
 use App\Mcp\Tools\GetEducationalTopic;
+use App\Mcp\Tools\GetFinancialGoals;
 use App\Mcp\Tools\GetFinancialProfile;
 use App\Mcp\Tools\GetLearningPath;
 use App\Mcp\Tools\GetLearningProgress;
@@ -19,11 +20,12 @@ use Laravel\Mcp\Server\Attributes\Version;
 
 #[Name('Banorte Server')]
 #[Version('0.0.1')]
-#[Instructions('Capacidades financieras de Banorte: perfil financiero, portafolio, análisis de riesgo, información de activos, cotizaciones de mercado y simulación de inversión. Todas las tools de lectura requieren el scope mcp:read; simulate_investment requiere mcp:simulate. get_financial_profile solo debe pedirse con detail=exact si el usuario lo solicitó explícitamente.')]
+#[Instructions('Capacidades financieras de Banorte: perfil financiero, metas financieras, portafolio, análisis de riesgo, información de activos, cotizaciones de mercado y simulación de inversión. Todas las tools de lectura requieren el scope mcp:read; simulate_investment requiere mcp:simulate; mark_topic_completed requiere mcp:write. get_financial_profile y get_financial_goals solo deben pedirse con detail=exact si el usuario lo solicitó explícitamente -- por defecto nunca muestran montos exactos.')]
 class BanorteServer extends Server
 {
     protected array $tools = [
         GetFinancialProfile::class,
+        GetFinancialGoals::class,
         GetPortfolio::class,
         AnalyzePortfolio::class,
         GetAssetInformation::class,

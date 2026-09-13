@@ -2,10 +2,10 @@
 
 ## Status
 
-**Propuesto** — guardado para revisión futura. No implementado.
-
-Requiere visto bueno explícito porque CLAUDE.md fija el catálogo de 6 tools como
-decisión cerrada.
+**Aceptado e implementado** (2026-09-13) — visto bueno explícito del usuario para
+reabrir el catálogo cerrado. Ver `app/Mcp/Tools/GetFinancialGoals.php`,
+`app/Services/Financial/FinancialGoalServiceAdapter.php`, y la fila
+correspondiente en el catálogo de `CLAUDE.md` (ahora 11 tools).
 
 ## Contexto
 
