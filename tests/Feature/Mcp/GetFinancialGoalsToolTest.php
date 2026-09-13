@@ -77,7 +77,21 @@ class GetFinancialGoalsToolTest extends TestCase
 
         BanorteServer::tool(GetFinancialGoals::class, [])
             ->assertOk()
-            ->assertStructuredContent(['component' => 'financial_goals_list', 'props' => ['detail' => 'summary', 'goals' => []]]);
+            ->assertStructuredContent([
+                'component' => 'financial_goals_list',
+                'props' => [
+                    'detail' => 'summary',
+                    'goals' => [],
+                    'actions' => [
+                        [
+                            'id' => 'view_financial_profile',
+                            'label' => 'Ver mi perfil financiero',
+                            'tool' => 'get_financial_profile',
+                            'params' => [],
+                        ],
+                    ],
+                ],
+            ]);
     }
 
     public function test_goals_are_scoped_to_the_authenticated_user(): void
@@ -90,7 +104,7 @@ class GetFinancialGoalsToolTest extends TestCase
 
         BanorteServer::tool(GetFinancialGoals::class, [])
             ->assertOk()
-            ->assertStructuredContent(['component' => 'financial_goals_list', 'props' => ['detail' => 'summary', 'goals' => []]]);
+            ->assertStructuredContent(fn ($json) => $json->where('props.goals', [])->etc());
     }
 
     /**
@@ -115,6 +129,77 @@ class GetFinancialGoalsToolTest extends TestCase
                 ->missing('props.goals.0.months_remaining')
                 ->missing('props.goals.0.reaches_goal')
                 ->etc());
+    }
+
+    public function test_offers_a_simulate_action_for_a_goal_that_is_not_on_track(): void
+    {
+        $user = User::factory()->create();
+        FinancialProfile::factory()->for($user)->create([
+            'monthly_income' => 10_000,
+            'monthly_expenses' => 9_900,
+        ]);
+
+        // Meta enorme, casi sin capacidad de ahorro y poco tiempo -- no se alcanza.
+        FinancialGoal::factory()->for($user)->create([
+            'target_amount' => 1_000_000,
+            'current_amount' => 1_000,
+            'target_day' => now()->addMonths(6)->toDateString(),
+        ]);
+
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(GetFinancialGoals::class, [])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.goals.0.reaches_goal', false)
+                ->where('props.goals.0.actions', [
+                    [
+                        'id' => 'simulate_for_goal_0',
+                        'label' => 'Simular una inversión para esta meta',
+                        'tool' => 'simulate_investment',
+                        'params' => [],
+                    ],
+                ])
+                ->etc());
+    }
+
+    public function test_offers_no_simulate_action_for_a_goal_that_is_on_track(): void
+    {
+        $user = User::factory()->create();
+        FinancialProfile::factory()->for($user)->create([
+            'monthly_income' => 50_000,
+            'monthly_expenses' => 10_000,
+        ]);
+
+        // Meta chica, mucho tiempo y buena capacidad de ahorro -- se alcanza.
+        FinancialGoal::factory()->for($user)->create([
+            'target_amount' => 10_000,
+            'current_amount' => 5_000,
+            'target_day' => now()->addYears(5)->toDateString(),
+        ]);
+
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(GetFinancialGoals::class, [])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.goals.0.reaches_goal', true)
+                ->where('props.goals.0.actions', [])
+                ->etc());
+    }
+
+    public function test_offers_no_simulate_action_when_there_is_no_financial_profile_to_evaluate_against(): void
+    {
+        $user = User::factory()->create();
+
+        FinancialGoal::factory()->for($user)->create([
+            'target_amount' => 100_000,
+            'current_amount' => 25_000,
+        ]);
+
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(GetFinancialGoals::class, [])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.goals.0.actions', [])->etc());
     }
 
     public function test_rejects_without_the_mcp_read_scope(): void
