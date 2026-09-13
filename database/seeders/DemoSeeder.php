@@ -49,7 +49,13 @@ class DemoSeeder extends Seeder
         $holdings = [
             'AAPL' => ['name' => 'Apple Inc.', 'asset_type' => 'accion', 'currency' => 'USD', 'quantity' => 10, 'average_cost' => 180],
             'MSFT' => ['name' => 'Microsoft Corp.', 'asset_type' => 'accion', 'currency' => 'USD', 'quantity' => 5, 'average_cost' => 300],
-            'CETES28' => ['name' => 'CETES 28 días', 'asset_type' => 'bono', 'currency' => 'MXN', 'quantity' => 1000, 'average_cost' => 10],
+            // BND (bond ETF) en vez de CETES28: Twelve Data no cotiza CETES
+            // (instrumento gubernamental mexicano fuera de su cobertura), así
+            // que el agente insistía en advertir "sin cotización disponible"
+            // en cada respuesta -- ruidoso para la demo. BND sí tiene precio
+            // en vivo y sigue clasificando como "bono" para el análisis de
+            // riesgo/diversificación.
+            'BND' => ['name' => 'Vanguard Total Bond Market ETF', 'asset_type' => 'bono', 'currency' => 'USD', 'quantity' => 20, 'average_cost' => 72],
         ];
 
         foreach ($holdings as $symbol => $data) {
