@@ -1,59 +1,27 @@
 @props(['props' => []])
 
-<div>
-    <div class="stat">
-        <span class="label">Monto inicial</span>
-        <span class="value">${{ number_format($props['initial_amount'], 2) }}</span>
-    </div>
-    <div class="stat">
-        <span class="label">Plazo</span>
-        <span class="value">{{ $props['months'] }} meses</span>
-    </div>
-    <div class="stat">
-        <span class="label">Perfil</span>
-        <span class="value">{{ ucfirst($props['risk_profile']) }}</span>
-    </div>
-    <div class="stat">
-        <span class="label">Tasa anual asumida</span>
-        <span class="value">{{ number_format($props['assumed_annual_rate'] * 100, 1) }}%</span>
-    </div>
-    <div class="stat">
-        <span class="label">Valor proyectado</span>
-        <span class="value">${{ number_format($props['projected_value'], 2) }}</span>
-    </div>
-    <div class="stat">
-        <span class="label">Ganancia proyectada</span>
-        <span class="value badge positive">+${{ number_format($props['projected_gain'], 2) }}</span>
+<x-a2ui.atoms.card title="Simulación de inversión" tool="simulate_investment">
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <x-a2ui.atoms.stat label="Monto inicial">${{ number_format($props['initial_amount'], 2) }}</x-a2ui.atoms.stat>
+        <x-a2ui.atoms.stat label="Plazo">{{ $props['months'] }} meses</x-a2ui.atoms.stat>
+        <div>
+            <p class="text-xs text-text-muted">Perfil</p>
+            <x-a2ui.atoms.risk-level-badge :level="$props['risk_profile']" />
+        </div>
+        <x-a2ui.atoms.stat label="Tasa anual asumida">{{ number_format($props['assumed_annual_rate'] * 100, 1) }}%</x-a2ui.atoms.stat>
+        <x-a2ui.atoms.stat label="Valor proyectado">${{ number_format($props['projected_value'], 2) }}</x-a2ui.atoms.stat>
+        <x-a2ui.atoms.stat label="Ganancia proyectada" tone="positive">+${{ number_format($props['projected_gain'], 2) }}</x-a2ui.atoms.stat>
     </div>
 
-    <p class="hint">{{ $props['disclaimer'] }}</p>
+    <p class="text-xs text-text-muted">{{ $props['disclaimer'] }}</p>
 
     @if ($props['chart'] ?? null)
-        {{-- Columnas apiladas capital + rendimiento (Chart / Stacked Column en el contrato). --}}
-        @php $yMax = $props['chart']['y_axis']['domain'][1] ?: 1; @endphp
-        <div style="display: flex; gap: 0.4rem; align-items: flex-end; height: 6rem; margin-top: 0.75rem;">
-            @foreach ($props['chart']['data'] as $period)
-                @php
-                    $principalPct = $period['values']['principal'] / $yMax * 100;
-                    $gainPct = $period['values']['gain'] / $yMax * 100;
-                @endphp
-                <div style="flex: 1; text-align: center;">
-                    <div style="display: flex; flex-direction: column-reverse; height: 5rem;">
-                        <div style="height: {{ $principalPct }}%; background: #888;"></div>
-                        <div style="height: {{ $gainPct }}%; background: #2e7d32;"></div>
-                    </div>
-                    <span class="hint">{{ $period['key'] }}</span>
-                </div>
-            @endforeach
-        </div>
-        <span class="hint">■ capital &nbsp; ■ rendimiento</span>
+        <x-a2ui.atoms.chart-stacked-column :chart="$props['chart']" />
     @endif
-</div>
 
-@if (($props['actions'] ?? []) !== [])
-    <div style="margin-top: 0.5rem;">
-        @foreach ($props['actions'] as $action)
-            <span class="badge">{{ $action['label'] }}</span>
+    <x-slot:actions>
+        @foreach ($props['actions'] ?? [] as $action)
+            <x-a2ui.atoms.option-chip>{{ $action['label'] }}</x-a2ui.atoms.option-chip>
         @endforeach
-    </div>
-@endif
+    </x-slot:actions>
+</x-a2ui.atoms.card>

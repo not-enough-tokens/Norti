@@ -89,4 +89,12 @@
     --color-chart-asset-efectivo: var(--color-banorte-200);
     --color-chart-track: var(--color-ink-100);
     --color-chart-marker: var(--color-ink-900);
+    --color-chart-positive: var(--color-emerald-700);
+    --color-chart-negative: var(--color-banorte-700);
+    --color-chart-primary: var(--color-ink-900);
+    --color-chart-muted: var(--color-ink-400);
+    --color-chart-highlight: var(--color-banorte-500);
+    --color-chart-total: var(--color-ink-700);
+    --color-chart-grid: var(--color-ink-200);
+    --color-chart-baseline: var(--color-ink-600);
 }

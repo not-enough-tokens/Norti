@@ -1,26 +1,23 @@
 @props(['props' => []])
 
-<div>
-    <div class="stat">
-        <span class="label">Avance</span>
-        <span class="value">{{ $props['completed_topics'] }} de {{ $props['total_topics'] }} ({{ $props['completion_percentage'] }}%)</span>
-    </div>
-    <div class="progress">
-        <div style="width: {{ $props['completion_percentage'] }}%;"></div>
-    </div>
+<x-a2ui.atoms.card title="Tu progreso" tool="get_learning_progress">
+    <x-a2ui.atoms.stat label="Avance">{{ $props['completed_topics'] }} de {{ $props['total_topics'] }} ({{ $props['completion_percentage'] }}%)</x-a2ui.atoms.stat>
+    <x-a2ui.atoms.progress-fill :percentage="$props['completion_percentage']" />
 
     @if (($props['category_gaps'] ?? []) !== [])
-        <p class="hint" style="margin-top: 0.5rem;">Oportunidades de aprendizaje:</p>
-        @foreach ($props['category_gaps'] as $category)
-            <span class="pill">{{ $category }}</span>
-        @endforeach
+        <div>
+            <p class="mb-1 text-xs text-text-muted">Oportunidades de aprendizaje</p>
+            <div class="flex flex-wrap gap-2">
+                @foreach ($props['category_gaps'] as $category)
+                    <x-a2ui.atoms.badge tone="brand">{{ $category }}</x-a2ui.atoms.badge>
+                @endforeach
+            </div>
+        </div>
     @endif
-</div>
 
-@if (($props['actions'] ?? []) !== [])
-    <div style="margin-top: 0.5rem;">
-        @foreach ($props['actions'] as $action)
-            <span class="badge">{{ $action['label'] }}</span>
+    <x-slot:actions>
+        @foreach ($props['actions'] ?? [] as $action)
+            <x-a2ui.atoms.option-chip>{{ $action['label'] }}</x-a2ui.atoms.option-chip>
         @endforeach
-    </div>
-@endif
+    </x-slot:actions>
+</x-a2ui.atoms.card>

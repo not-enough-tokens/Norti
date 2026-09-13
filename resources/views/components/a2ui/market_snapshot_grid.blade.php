@@ -1,44 +1,35 @@
 @props(['props' => []])
 
-<div>
-    @foreach ($props['quotes'] as $symbol => $quote)
-        <div style="margin-bottom: 0.5rem;">
-            <strong>{{ $symbol }}</strong>
-            @if (isset($quote['error']))
-                <span class="badge negative">Error</span>
-                <p class="hint">{{ $quote['error'] }}</p>
-            @else
-                <span class="value">{{ $quote['close'] ?? '—' }}</span>
-                @if (isset($quote['percent_change']))
-                    <span class="badge {{ (float) $quote['percent_change'] >= 0 ? 'positive' : 'negative' }}">
-                        {{ (float) $quote['percent_change'] >= 0 ? '+' : '' }}{{ $quote['percent_change'] }}%
-                    </span>
-                @endif
-            @endif
+<x-a2ui.atoms.card title="Cotizaciones de mercado" tool="get_market_snapshot">
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        @foreach ($props['quotes'] as $symbol => $quote)
+            <div>
+                <p class="text-xs text-text-muted">{{ $symbol }}</p>
 
-            @if (($quote['actions'] ?? []) !== [])
-                @foreach ($quote['actions'] as $action)
-                    <span class="pill">{{ $action['label'] }}</span>
-                @endforeach
-            @endif
-        </div>
-    @endforeach
+                @if (isset($quote['error']))
+                    <x-a2ui.atoms.badge tone="negative">Error</x-a2ui.atoms.badge>
+                @else
+                    <p class="font-display text-base font-semibold text-text-primary">{{ $quote['close'] ?? '—' }}</p>
+
+                    @if (isset($quote['percent_change']))
+                        <span class="text-xs {{ (float) $quote['percent_change'] >= 0 ? 'text-feedback-positive-text' : 'text-feedback-negative-text' }}">
+                            {{ (float) $quote['percent_change'] >= 0 ? '+' : '' }}{{ $quote['percent_change'] }}%
+                        </span>
+                    @endif
+                @endif
+            </div>
+        @endforeach
+    </div>
 
     @if ($props['chart'] ?? null)
-        {{-- % de cambio por símbolo (Chart / Column en el contrato). --}}
-        @php $bound = max(array_map('abs', array_column($props['chart']['data'], 'value') ?: [1])) ?: 1; @endphp
-        <div style="margin-top: 0.5rem;">
-            @foreach ($props['chart']['data'] as $bar)
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
-                    <span class="hint" style="width: 4rem;">{{ $bar['key'] }}</span>
-                    <div style="flex: 1; background: rgba(128,128,128,0.15); border-radius: 4px; height: 0.6rem;">
-                        @if ($bar['value'] !== null)
-                            <div style="width: {{ min(100, abs($bar['value']) / $bound * 100) }}%; background: {{ $bar['value'] >= 0 ? '#2e7d32' : '#c62828' }}; height: 100%; border-radius: 4px;"></div>
-                        @endif
-                    </div>
-                    <span class="hint">{{ $bar['value'] !== null ? $bar['value'].'%' : 'sin dato' }}</span>
-                </div>
-            @endforeach
-        </div>
+        <x-a2ui.atoms.chart-column :chart="$props['chart']" />
     @endif
-</div>
+
+    <x-slot:actions>
+        @foreach ($props['quotes'] as $quote)
+            @foreach ($quote['actions'] ?? [] as $action)
+                <x-a2ui.atoms.option-chip>{{ $action['label'] }}</x-a2ui.atoms.option-chip>
+            @endforeach
+        @endforeach
+    </x-slot:actions>
+</x-a2ui.atoms.card>
