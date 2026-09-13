@@ -428,7 +428,7 @@ A coherent end-to-end prototype suitable for the hackathon presentation.
 
 ### Status
 
-**Planned**
+**Planned** on the product/UI side -- still waiting on the Figma A2UI component library and the site's frontend architecture (home, auth, chat). Backend-side demo prep already exists and isn't blocked by that: `database/seeders/DemoSeeder.php` (a demo user with profile, a diversified portfolio, deliberately no goals, and partial education progress) and `docs/development/demo-script.md` (10 example questions mapped to all 10 MCP tools, following the Demo Requirements above).
 
 ---
 

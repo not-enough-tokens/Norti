@@ -92,7 +92,7 @@ if (app()->environment(['local', 'testing'])) {
             );
         }
 
-        $token = $user->createToken('mcp-test-debug', ['mcp:read', 'mcp:simulate'])->accessToken;
+        $token = $user->createToken('mcp-test-debug', ['mcp:read', 'mcp:simulate', 'mcp:write'])->accessToken;
 
         return response()->json([
             'token' => $token,
