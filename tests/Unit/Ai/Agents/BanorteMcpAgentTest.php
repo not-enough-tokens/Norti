@@ -41,6 +41,19 @@ class BanorteMcpAgentTest extends TestCase
         $this->assertStringContainsString('category_gaps', $instructions);
     }
 
+    /**
+     * Mismo tipo de regresión que arriba, esta vez para get_financial_goals
+     * (ADR 006, PR #30): el follow-up quedó pendiente porque tocaba el mismo
+     * archivo que el PR de las tools de educación, todavía abierto entonces.
+     */
+    public function test_instructions_mention_get_financial_goals_and_its_summary_default(): void
+    {
+        $instructions = (string) (new BanorteMcpAgent(Mockery::mock(Client::class)))->instructions();
+
+        $this->assertStringContainsString('get_financial_goals', $instructions);
+        $this->assertStringContainsString('detail=summary', $instructions);
+    }
+
     public function test_tools_spreads_the_mcp_clients_tools(): void
     {
         $client = Mockery::mock(Client::class);
