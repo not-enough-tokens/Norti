@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Contracts\FinancialGoalServiceContract;
 use App\Services\Contracts\FinancialProfileServiceContract;
 use App\Services\Contracts\InvestmentSimulationServiceContract;
 use App\Services\Contracts\MarketDataProviderContract;
@@ -9,6 +10,7 @@ use App\Services\Contracts\PortfolioServiceContract;
 use App\Services\Contracts\RiskAnalysisServiceContract;
 use App\Services\Financial\EloquentFinancialProfileService;
 use App\Services\Financial\EloquentPortfolioService;
+use App\Services\Financial\FinancialGoalServiceAdapter;
 use App\Services\Financial\InvestmentSimulationServiceAdapter;
 use App\Services\Financial\RiskAnalysisServiceAdapter;
 use App\Services\MarketData\TwelveDataMarketDataProvider;
@@ -35,5 +37,6 @@ class DomainServiceProvider extends ServiceProvider
         $this->app->bind(PortfolioServiceContract::class, EloquentPortfolioService::class);
         $this->app->bind(RiskAnalysisServiceContract::class, RiskAnalysisServiceAdapter::class);
         $this->app->bind(InvestmentSimulationServiceContract::class, InvestmentSimulationServiceAdapter::class);
+        $this->app->bind(FinancialGoalServiceContract::class, FinancialGoalServiceAdapter::class);
     }
 }

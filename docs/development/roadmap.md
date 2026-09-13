@@ -95,7 +95,7 @@ Implement the application's core business capabilities independently from MCP an
 ### Services
 
 - `ProfileService` (`FinancialProfileService`'s actual name) — `createOrUpdate()`, `monthlySavingsCapacity()`. Wrapped by `EloquentFinancialProfileService` (`app/Services/Financial/`) for the M3 contract, which buckets the savings rate into `low`/`moderate`/`high` instead of exposing exact income/expenses to the model by default.
-- `FinancialGoalService` — never built as a named class. `InvestmentSimulationService::projectForGoal()`/`evaluateGoal()` cover the same need (project a goal, detect if it's overdue, verify the goal and profile belong to the same user) and have test coverage, but **nothing in the app calls them** — no MCP tool, route, or view. [ADR 006](../decisions/006-get-financial-goals-tool.md) proposes a 7th, read-only MCP tool for this; pending a decision, since the 6-tool catalog was a closed decision and the new tool would touch exact amounts (see the sensitive-data policy in `CLAUDE.md`).
+- `FinancialGoalService` — never built as a named class. `InvestmentSimulationService::projectForGoal()`/`evaluateGoal()` cover the same need (project a goal, detect if it's overdue, verify the goal and profile belong to the same user) and have test coverage. [ADR 006](../decisions/006-get-financial-goals-tool.md) closed this gap: `FinancialGoalServiceAdapter` wraps both methods for the `get_financial_goals` MCP tool (M3), respecting the same summary/exact split as `get_financial_profile`.
 - `PortfolioService` — portfolio creation (`createForUser()`, allocates holdings per the user's risk profile) and aggregate stats (`totalInvested()`, `currentDistribution()`). Wrapped by `EloquentPortfolioService` for the M3 read model, which enriches holdings with live market prices — cash (`efectivo`) is valued at face value instead of queried from Twelve Data (it isn't a quotable instrument).
 - `RiskAnalysisService` — asset allocation and expected-return recommendations per risk profile. `risk_tolerance` is a free string column with no DB-level enum; callers must normalize it through `suggestRiskProfile()` rather than pass it raw, or an unrecognized value throws.
 - `InvestmentSimulationService` — month-by-month compound-interest projection (`project()`), plus the goal-projection methods above. Wrapped by `InvestmentSimulationServiceAdapter` for the M3 contract.
@@ -119,7 +119,7 @@ Core financial operations can be executed independently of MCP.
 
 ### Status
 
-**Completed** — except financial-goal exposure (see `FinancialGoalService` above and ADR 006), which is scoped as a follow-up, not a blocker.
+**Completed** — financial-goal exposure (see `FinancialGoalService` above and ADR 006) closed the last gap in this layer.
 
 ---
 
@@ -132,6 +132,7 @@ Expose selected application capabilities through the Model Context Protocol.
 ### Implemented Tools
 
 - `get_financial_profile`
+- `get_financial_goals` (ADR 006 -- added after the original 6, wraps M2's `InvestmentSimulationService::projectForGoal()`/`evaluateGoal()`)
 - `get_portfolio`
 - `analyze_portfolio`
 - `get_asset_information`
