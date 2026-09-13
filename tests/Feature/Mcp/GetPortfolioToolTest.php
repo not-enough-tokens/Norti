@@ -41,6 +41,22 @@ class GetPortfolioToolTest extends TestCase
                 ->where('props.portfolios.0.holdings.0.current_price', 150)
                 ->where('props.portfolios.0.holdings.0.market_value', 1500)
                 ->where('props.portfolios.0.holdings.0.unrealized_gain', 500)
+                ->where('props.portfolios.0.holdings.0.actions', [
+                    [
+                        'id' => 'view_asset_AAPL',
+                        'label' => 'Ver información de AAPL',
+                        'tool' => 'get_asset_information',
+                        'params' => ['symbol' => 'AAPL'],
+                    ],
+                ])
+                ->where('props.actions', [
+                    [
+                        'id' => 'analyze_risk',
+                        'label' => 'Analizar riesgo',
+                        'tool' => 'analyze_portfolio',
+                        'params' => [],
+                    ],
+                ])
                 ->etc());
     }
 

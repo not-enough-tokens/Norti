@@ -34,6 +34,20 @@ class MarkTopicCompletedToolTest extends TestCase
             ->assertStructuredContent(fn ($json) => $json->where('component', 'learning_topic_completed')
                 ->where('props.topic_id', $topic->id)
                 ->where('props.completed', true)
+                ->where('props.actions', [
+                    [
+                        'id' => 'view_progress',
+                        'label' => 'Ver mi progreso',
+                        'tool' => 'get_learning_progress',
+                        'params' => [],
+                    ],
+                    [
+                        'id' => 'next_topic',
+                        'label' => 'Siguiente tema',
+                        'tool' => 'get_learning_path',
+                        'params' => [],
+                    ],
+                ])
                 ->etc());
 
         $this->assertNotNull(

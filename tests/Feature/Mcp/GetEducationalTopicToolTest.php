@@ -34,6 +34,14 @@ class GetEducationalTopicToolTest extends TestCase
             ->assertStructuredContent(fn ($json) => $json->where('component', 'educational_topic')
                 ->where('props.id', $topic->id)
                 ->where('props.title', 'Ahorro')
+                ->where('props.actions', [
+                    [
+                        'id' => 'mark_completed',
+                        'label' => 'Marcar como completado',
+                        'tool' => 'mark_topic_completed',
+                        'params' => ['topic_id' => $topic->id],
+                    ],
+                ])
                 ->etc());
     }
 

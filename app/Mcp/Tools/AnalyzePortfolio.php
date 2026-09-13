@@ -3,6 +3,8 @@
 namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\LogsToolInvocation;
+use App\Mcp\Support\ToolAction;
+use App\Models\EducationalTopic;
 use App\Services\Contracts\RiskAnalysisServiceContract;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -37,6 +39,7 @@ class AnalyzePortfolio extends Tool
         // excepción del servicio deja un audit log que dice 'ok' para una
         // llamada que en realidad falló.
         $props = $this->riskAnalysis->analyze($user);
+        $props['actions'] = $this->buildActions($props);
 
         $this->logToolCall($request, success: true);
 
@@ -44,6 +47,37 @@ class AnalyzePortfolio extends Tool
             'component' => 'risk_analysis_panel',
             'props' => $props,
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $props
+     * @return list<array<string, mixed>>
+     */
+    private function buildActions(array $props): array
+    {
+        $actions = [];
+
+        if ($props['risk_tolerance'] ?? null) {
+            $actions[] = ToolAction::make(
+                'simulate_with_recommended_profile',
+                'Simular con perfil recomendado',
+                'simulate_investment',
+                ['risk_profile' => $props['risk_tolerance']],
+            );
+        }
+
+        $diversification = EducationalTopic::where('slug', 'diversificacion')->first();
+
+        if ($diversification) {
+            $actions[] = ToolAction::make(
+                'learn_diversification',
+                'Aprender a diversificar',
+                'get_educational_topic',
+                ['topic_id' => $diversification->id],
+            );
+        }
+
+        return $actions;
     }
 
     /**

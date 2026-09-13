@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\LogsToolInvocation;
+use App\Mcp\Support\ToolAction;
 use App\Services\FinancialEducationService;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -64,6 +65,9 @@ class GetLearningProgress extends Tool
                 'pending_topics' => $pending,
                 'completion_percentage' => $percentage,
                 'category_gaps' => $this->education->getCategoryGaps($user),
+                'actions' => [
+                    ToolAction::make('continue_learning', 'Continuar con el siguiente tema', 'get_learning_path'),
+                ],
             ],
         ]);
     }
