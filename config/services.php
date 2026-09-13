@@ -35,6 +35,18 @@ return [
         ],
     ],
 
+    'mcp' => [
+        // A dónde llaman ChatController::send() y el debug route de
+        // routes/web.php para hablar con /mcp/banorte -- por defecto,
+        // app.url (el mismo proceso que ya sirve la request web). En local
+        // con `php artisan serve` en Windows eso es un auto-deadlock (ver
+        // CLAUDE.md): la request externa nunca libera el proceso -- único,
+        // sin fork() -- para atender la interna. Overridear con
+        // MCP_LOOPBACK_URL apuntando a un segundo `php artisan serve` corre
+        // el mismo código en OTRO proceso, así uno no bloquea al otro.
+        'loopback_url' => env('MCP_LOOPBACK_URL', env('APP_URL', 'http://localhost')),
+    ],
+
     'twelvedata' => [
         'key' => env('TWELVE_DATA_API_KEY'),
         'base_url' => env('TWELVE_DATA_BASE_URL', 'https://api.twelvedata.com'),

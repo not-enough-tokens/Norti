@@ -64,8 +64,10 @@ class ChatController extends Controller
         try {
             // No url('/mcp/banorte'): dentro de una request real ese helper
             // resuelve contra el host de ESTA request, no necesariamente
-            // donde vive /mcp/banorte.
-            $mcpUrl = rtrim((string) config('app.url'), '/').'/mcp/banorte';
+            // donde vive /mcp/banorte. services.mcp.loopback_url (no
+            // app.url a secas) para poder apuntar esta llamada a un
+            // segundo proceso en local -- ver la nota en config/services.php.
+            $mcpUrl = rtrim((string) config('services.mcp.loopback_url'), '/').'/mcp/banorte';
             $client = Client::web($mcpUrl)->withToken($this->mcpToken($request))->connect();
 
             try {
