@@ -2,11 +2,39 @@
 
 namespace Tests\Feature\MarketData;
 
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Laravel\Passport\Passport;
 use Tests\TestCase;
 
 class MarketDataControllerTest extends TestCase
 {
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Passport::actingAs(User::factory()->create());
+    }
+
+    /**
+     * Estas rutas son un proxy a una API de terceros con cuota: sin auth,
+     * cualquiera podía agotar los 8 req/min del plan gratuito.
+     */
+    public function test_market_data_routes_reject_unauthenticated_callers(): void
+    {
+        // Passport::actingAs() del setUp() deja al usuario autenticado en el
+        // contenedor; este test necesita una app limpia para simular un anónimo.
+        $this->refreshApplication();
+        Http::preventStrayRequests();
+
+        $this->getJson('/api/market-data/quote?symbol=AAPL')->assertUnauthorized();
+        $this->getJson('/api/market-data/time-series?symbol=AAPL&interval=1day')->assertUnauthorized();
+        $this->getJson('/api/market-data/profile?symbol=AAPL')->assertUnauthorized();
+    }
+
     public function test_quote_returns_twelvedata_payload(): void
     {
         Http::fake([
