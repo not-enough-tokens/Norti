@@ -43,7 +43,7 @@ app/Services/Contracts/MarketDataProviderContract.php
 
 Bindear en el Service Container apuntando primero a `Fake*`/`Mock*` en `app/Services/Fakes/` (o `app/Services/MarketData/MockMarketDataProvider.php`). Cuando Integrante A (M1/M2) o Integrante C (M4) entreguen sus implementaciones reales, solo se cambia el binding — ninguna tool debería necesitar reescritura.
 
-## Catálogo de MCP Tools (6, M3)
+## Catálogo de MCP Tools (10: 6 de M3 + 4 de M6)
 
 | Tool | Scope requerido | Clasificación de riesgo |
 |---|---|---|
@@ -53,6 +53,12 @@ Bindear en el Service Container apuntando primero a `Fake*`/`Mock*` en `app/Serv
 | `get_asset_information` | `mcp:read` | read-only |
 | `get_market_snapshot` | `mcp:read` | read-only |
 | `simulate_investment` | `mcp:simulate` | categoría propia (simulate) |
+| `get_educational_topic` | `mcp:read` | read-only (M6) |
+| `get_learning_path` | `mcp:read` | read-only (M6) |
+| `get_learning_progress` | `mcp:read` | read-only (M6) |
+| `mark_topic_completed` | `mcp:write` | mutating, categoría propia (M6) — la única tool de escritura del catálogo |
+
+Las últimas 4 llegaron vía `feature/education-mcp` (mergeado a `master`), junto con el scope `mcp:write`. Los 3 flujos reales que emiten tokens (`/mcp/token`, y los comandos `mcp:demo-agent`/`mcp:client-tools`/`mcp:client-call` de M5) ya otorgan `mcp:write` — sin eso `mark_topic_completed` sería inalcanzable en la práctica (fue exactamente ese bug, ya corregido).
 
 **Fuera del MVP, deliberadamente:** `execute_trade`, `transfer_money`, `withdraw_funds` (high-risk, no se construyen). Post-MVP si sobra tiempo: `create_financial_goal`, `update_financial_profile` (mutating, requieren autorización adicional).
 
@@ -63,7 +69,7 @@ MVP mínimo demostrable si el tiempo se reduce: `get_financial_profile`, `get_po
 - **Humano ↔ app Blade:** sesión estándar de Laravel (login, cookie, CSRF). Sin tokens — no es SPA. Implementado en `app/Http/Controllers/Auth/` (`AuthenticatedSessionController`, `RegisteredUserController`) + rutas `login`/`register`/`logout` en `routes/web.php`, sin paquete externo (Breeze/Fortify) para no agregar una dependencia innecesaria.
 - **Flujo post-login/registro:** ambos redirigen a `route('onboarding.index')` (`OnboardingController`), nunca directo a `/education`. Hoy `onboarding.index` es un placeholder (`resources/views/onboarding/index.blade.php`) con un link a continuar — el flujo real de onboarding (preguntas para detectar la intención del usuario: aprender, invertir, dar seguimiento a una meta) se construye después, en este mismo punto de entrada, sin tocar el flujo de auth de nuevo.
 - **Agente de IA ↔ MCP server:** Laravel Passport. Se emite un Personal Access Token atado al usuario autenticado en el momento en que inicia la conversación (`$user->createToken('mcp-session', ['mcp:read', 'mcp:simulate', 'mcp:write'])->accessToken`), nunca un token genérico de la app. Ruta MCP protegida con middleware `auth:api`.
-- **Scopes:** `mcp:read` (4 read-only + get_market_snapshot), `mcp:simulate` (simulate_investment). Cada tool valida su propio scope con `tokenCan()` dentro de `handle()` antes de ejecutar lógica.
+- **Scopes:** `mcp:read` (8 tools read-only), `mcp:simulate` (simulate_investment), `mcp:write` (mark_topic_completed). Cada tool valida su propio scope con `tokenCan()` dentro de `handle()` antes de ejecutar lógica.
 - **Rate limiting:** `RateLimiter::for('mcp', ...)` por usuario/IP, aplicado como `throttle:mcp` en la ruta de `routes/ai.php`.
 - **`/api/market-data/*`:** protegidas con `auth:api` (Passport, el mismo guard que el MCP server, porque son rutas stateless) + `throttle:market-data`, cuyo límite sale de `services.twelvedata.rate_limit_per_minute` (default 8, el techo del plan gratuito). Estaban completamente abiertas: sin auth cualquiera podía agotar la cuota de TwelveData y tumbar el market data de toda la app. Ojo: el techo real de TwelveData es **por cuenta**, no por usuario, así que este throttle limita a cada cliente pero no garantiza el techo global.
 - **Audit log:** tabla `audit_logs` (`user_id`, `tool_name`, `input` jsonb sin campos sensibles, `result_summary`, `ip_address`, `created_at`). Registrar cada `tools/call`. **Nunca** loggear montos exactos ni el `FinancialProfile` completo — solo metadata (qué tool, cuándo, resultado resumido/booleano).
