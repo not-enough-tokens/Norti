@@ -3,6 +3,7 @@
 use App\Http\Controllers\EducationalTopicController;
 use App\Http\Controllers\McpTokenController;
 use App\Models\Asset;
+use App\Models\AuditLog;
 use App\Models\FinancialProfile;
 use App\Models\Holding;
 use App\Models\Portfolio;
@@ -23,7 +24,7 @@ Route::post('/mcp/token', [McpTokenController::class, 'store'])
     ->middleware('auth')
     ->name('mcp.token.issue');
 
-if (app()->environment('local')) {
+if (app()->environment(['local', 'testing'])) {
     Route::get('/mcp-test', fn () => view('debug.mcp-tester'))->name('mcp.debug-tester');
 
     Route::get('/mcp-test/seed', function () {
@@ -71,4 +72,7 @@ if (app()->environment('local')) {
             'email' => $user->email,
         ]);
     })->name('mcp.debug-seed');
+
+    Route::get('/mcp-test/audit-logs', fn () => AuditLog::latest()->limit(50)->get())
+        ->name('mcp.debug-audit-logs');
 }

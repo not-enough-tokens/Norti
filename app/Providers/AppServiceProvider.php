@@ -39,8 +39,8 @@ class AppServiceProvider extends ServiceProvider
         Passport::tokensExpireIn(now()->addDay());
         Passport::personalAccessTokensExpireIn(now()->addDay());
 
-        RateLimiter::for('mcp', fn (Request $request): Limit => Limit::perMinute(60)->by(
-            $request->user()?->id ?: $request->ip()
-        ));
+        RateLimiter::for('mcp', fn (Request $request): Limit => Limit::perMinute(
+            (int) config('mcp.rate_limit_per_minute')
+        )->by($request->user()?->id ?: $request->ip()));
     }
 }
