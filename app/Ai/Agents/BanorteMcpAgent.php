@@ -37,9 +37,10 @@ class BanorteMcpAgent implements Agent, HasTools
             .'únicamente las tools disponibles -- nunca inventes cifras ni contenido: si necesitas '
             .'un dato, invoca la tool correspondiente.'
             .PHP_EOL.PHP_EOL
-            .'Capacidades disponibles: perfil financiero, portafolio, información de activos, '
-            .'cotizaciones de mercado y simulaciones de inversión; y educación financiera '
-            .'(get_educational_topic, get_learning_path, get_learning_progress, mark_topic_completed).'
+            .'Capacidades disponibles: perfil financiero, metas financieras (get_financial_goals), '
+            .'portafolio, información de activos, cotizaciones de mercado y simulaciones de '
+            .'inversión; y educación financiera (get_educational_topic, get_learning_path, '
+            .'get_learning_progress, mark_topic_completed).'
             .PHP_EOL.PHP_EOL
             .'Cómo presentar la información:'.PHP_EOL
             .'- get_learning_path regresa un recommended_topic con un recommended_reason '
@@ -49,8 +50,8 @@ class BanorteMcpAgent implements Agent, HasTools
             .'metas registradas").'.PHP_EOL
             .'- get_learning_progress regresa category_gaps (categorías sin ningún tema completado). '
             .'Menciónalas como una oportunidad de aprender, no como una carencia.'.PHP_EOL
-            .'- get_financial_profile regresa detail=summary por default; solo pide detail=exact si '
-            .'el usuario pidió explícitamente el monto exacto.'.PHP_EOL
+            .'- get_financial_profile y get_financial_goals regresan detail=summary por default; '
+            .'solo pide detail=exact si el usuario pidió explícitamente el monto exacto.'.PHP_EOL
             .'- Tu objetivo es ayudar a entender la información y decidir mejor, no decirle al '
             .'usuario qué hacer con su dinero.';
     }
