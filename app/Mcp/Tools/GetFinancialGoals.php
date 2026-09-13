@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\LogsToolInvocation;
+use App\Mcp\Support\ToolAction;
 use App\Services\Contracts\FinancialGoalServiceContract;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -39,6 +40,19 @@ class GetFinancialGoals extends Tool
 
         $props = $this->goals->getGoals($user, $detail);
 
+        // Como el resto del catálogo: la tool solo delega en el Service para
+        // los datos, pero arma actions[] aquí (no es lógica financiera, es la
+        // sugerencia de siguiente paso para el agente).
+        $props['actions'] = [
+            ToolAction::make('view_financial_profile', 'Ver mi perfil financiero', 'get_financial_profile'),
+        ];
+
+        $props['goals'] = array_map(
+            fn (array $goal, int $index): array => [...$goal, 'actions' => $this->goalActions($goal, $index)],
+            $props['goals'],
+            array_keys($props['goals']),
+        );
+
         $this->logToolCall($request, success: true, safeInput: [
             'detail' => $detail,
             'goal_count' => count($props['goals']),
@@ -48,6 +62,30 @@ class GetFinancialGoals extends Tool
             'component' => 'financial_goals_list',
             'props' => $props,
         ]);
+    }
+
+    /**
+     * Solo se ofrece cuando el Service pudo evaluar la meta contra el perfil
+     * financiero (requiere `FinancialProfile`, ver `FinancialGoalServiceAdapter`)
+     * y la meta todavía no se alcanza a tiempo -- una vencida ya no tiene nada
+     * que simular.
+     *
+     * @param  array<string, mixed>  $goal
+     * @return list<array<string, mixed>>
+     */
+    private function goalActions(array $goal, int $index): array
+    {
+        if (($goal['is_overdue'] ?? false) || ($goal['reaches_goal'] ?? true)) {
+            return [];
+        }
+
+        return [
+            ToolAction::make(
+                "simulate_for_goal_{$index}",
+                'Simular una inversión para esta meta',
+                'simulate_investment',
+            ),
+        ];
     }
 
     /**

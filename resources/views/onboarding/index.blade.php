@@ -30,12 +30,8 @@
 
                 @if ($isDone)
                     <div class="grid gap-3 sm:grid-cols-2">
-                        <form method="POST" action="{{ route('onboarding.restart') }}">
-                            @csrf
-                            <x-button class="w-full">Empezar un nuevo chat</x-button>
-                        </form>
-
-                        <x-button variant="secondary" :href="route('education.index')" class="w-full">Ver recursos educativos</x-button>
+                        <x-button :href="route('chat.index')" class="w-full">Hablar con Norti</x-button>
+                        <x-button :href="route('education.index')" variant="secondary" class="w-full">Ver educación</x-button>
                     </div>
                 @elseif ($step === 'risk')
                     <div class="flex flex-wrap gap-3">
