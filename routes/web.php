@@ -14,10 +14,17 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+// Placeholder so Laravel's default auth middleware has a valid `login`
+// route to redirect guests to -- no real login form/session logic yet,
+// that's a separate task for whoever owns human auth.
+Route::get('/login', fn () => view('auth.login'))->name('login');
+
 Route::get('/education', [EducationalTopicController::class, 'index'])
+    ->middleware('auth')
     ->name('education.index');
 
 Route::get('/education/{educationalTopic}', [EducationalTopicController::class, 'show'])
+    ->middleware('auth')
     ->name('education.show');
 
 Route::post('/mcp/token', [McpTokenController::class, 'store'])

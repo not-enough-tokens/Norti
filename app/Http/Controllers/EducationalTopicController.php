@@ -3,17 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\EducationalTopic;
-use App\Models\User;
 use App\Services\FinancialEducationIntegrationService;
 use App\Services\FinancialEducationService;
+use Illuminate\Http\Request;
 
 class EducationalTopicController extends Controller
 {
     public function index(
+        Request $request,
         FinancialEducationService $service,
         FinancialEducationIntegrationService $integrationService
     ) {
-        $user = User::first();
+        $user = $request->user();
 
         $learningPath = $service->getLearningPath($user);
 
