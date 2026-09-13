@@ -18,9 +18,10 @@ use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Facades\Route;
 use Laravel\Mcp\Client;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// Landing pública (marca + CTAs a login/registro). Quien ya tiene sesión no
+// necesita verla -- lo mandamos directo a onboarding.
+Route::get('/', fn () => auth()->check() ? redirect()->route('onboarding.index') : view('home'))
+    ->name('home');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');

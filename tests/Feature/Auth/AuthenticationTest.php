@@ -10,6 +10,26 @@ class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_root_url_sends_a_logged_in_user_straight_to_onboarding(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/');
+
+        $response->assertRedirect(route('onboarding.index'));
+    }
+
+    public function test_root_url_shows_the_landing_page_to_guests(): void
+    {
+        $response = $this->get('/');
+
+        $response->assertOk();
+        $response->assertViewIs('home');
+        $response->assertSee('Norti');
+        $response->assertSee(route('login'), false);
+        $response->assertSee(route('register'), false);
+    }
+
     public function test_login_screen_can_be_rendered(): void
     {
         $response = $this->get('/login');
@@ -59,6 +79,6 @@ class AuthenticationTest extends TestCase
         $response = $this->actingAs($user)->post('/logout');
 
         $this->assertGuest();
-        $response->assertRedirect('/login');
+        $response->assertRedirect('/');
     }
 }
