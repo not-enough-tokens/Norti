@@ -12,7 +12,7 @@ use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
 
 #[Name('get_learning_path')]
-#[Description('Obtiene la ruta de aprendizaje financiero del usuario autenticado y muestra los temas disponibles junto con su estado de progreso.')]
+#[Description('Obtiene la ruta de aprendizaje financiero del usuario autenticado, los temas disponibles con su estado de progreso, y el tema recomendado según su situación financiera actual.')]
 class GetLearningPath extends Tool
 {
     use LogsToolInvocation;
@@ -38,6 +38,7 @@ class GetLearningPath extends Tool
         }
 
         $learningPath = $this->education->getLearningPath($user);
+        $recommendedTopic = $this->education->getRecommendedTopic($user);
 
         $this->logToolCall(
             $request,
@@ -46,7 +47,10 @@ class GetLearningPath extends Tool
 
         return Response::structured([
             'component' => 'learning_path',
-            'props' => $learningPath,
+            'props' => [
+                'topics' => $learningPath,
+                'recommended_topic' => $recommendedTopic,
+            ],
         ]);
     }
 }

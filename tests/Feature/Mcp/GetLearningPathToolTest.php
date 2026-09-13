@@ -44,10 +44,11 @@ class GetLearningPathToolTest extends TestCase
         BanorteServer::tool(GetLearningPath::class)
             ->assertOk()
             ->assertStructuredContent(fn ($json) => $json->where('component', 'learning_path')
-                ->where('props.0.id', $completed->id)
-                ->where('props.0.is_completed', true)
-                ->where('props.1.id', $pending->id)
-                ->where('props.1.is_completed', false)
+                ->where('props.topics.0.id', $completed->id)
+                ->where('props.topics.0.is_completed', true)
+                ->where('props.topics.1.id', $pending->id)
+                ->where('props.topics.1.is_completed', false)
+                ->where('props.recommended_topic.id', $pending->id)
                 ->etc());
     }
 
@@ -71,7 +72,7 @@ class GetLearningPathToolTest extends TestCase
 
         BanorteServer::tool(GetLearningPath::class)
             ->assertOk()
-            ->assertStructuredContent(fn ($json) => $json->where('props.0.is_completed', false)->etc());
+            ->assertStructuredContent(fn ($json) => $json->where('props.topics.0.is_completed', false)->etc());
     }
 
     public function test_rejects_without_the_mcp_read_scope(): void
