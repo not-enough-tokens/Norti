@@ -52,9 +52,9 @@ El agente decide la siguiente tool; el componente nunca calcula el resultado por
 | `learning_progress` | `get_learning_progress` · `mcp:read` | `State=In Progress \| Not Started \| Complete` | — (Progress Fill basta) | Continuar con el siguiente tema → `get_learning_path` |
 | `learning_topic_completed` | `mark_topic_completed` · `mcp:write` | `State=Saving \| Completed` | — | Ver mi progreso → `get_learning_progress` · Siguiente tema |
 | `tool_error` | cualquier `Response::error` | `Kind=Scope Denied \| Market Data \| Generic` | — | Iniciar nueva sesión (`POST /mcp/token`) · Reintentar |
-| `financial_goals_list` | `get_financial_goals` · `mcp:read` | **Sin spec en Figma** -- ADR 006 se construyó después del audit de componentes | — | Ver mi perfil financiero · por meta, si no está en camino: Simular una inversión para esta meta |
+| `financial_goals_list` | `get_financial_goals` · `mcp:read` | Propuesto: `Detail=Summary \| Exact` × `State=Default \| Empty` (ver nota abajo) | — (Progress Fill + Target Marker bastan, como en `learning_progress`) | Ver mi perfil financiero · por meta, si no está en camino: Simular una inversión para esta meta |
 
-Cada página `A2UI / <component>` en Figma trae un frame `_Contract` con el mapeo props → capas, un JSON de ejemplo, la gráfica que le toca y las brechas que le aplican. `financial_goals_list` es la excepción: no tiene página en Figma todavía, así que sus variantes/gráfica quedan pendientes de que el equipo de diseño lo agregue.
+Cada página `A2UI / <component>` en Figma trae un frame `_Contract` con el mapeo props → capas, un JSON de ejemplo, la gráfica que le toca y las brechas que le aplican. `financial_goals_list` es la excepción: se construyó (ADR 006) después del audit de componentes, así que no tiene página en Figma todavía. **No hace falta ningún átomo nuevo para armarla** -- la propuesta de abajo compone únicamente piezas que ya existen en el inventario (Progress Fill, Target Marker, Badge, Stat, Key Value Row, Empty State), así que es trabajo de ensamblar una página `_Contract` más, no de diseñar desde cero.
 
 ### Mapeo de props relevantes
 
@@ -66,7 +66,11 @@ Cada página `A2UI / <component>` en Figma trae un frame `_Contract` con el mape
 - **`market_snapshot_grid`:** `quotes[SYMBOL]` con datos → Quote Tile OK; `quotes[SYMBOL].error` → Quote Tile Error; `chart` → Chart / Column.
 - **`learning_path`:** `topics[]` → una Topic Row por tema; `is_completed` → `Status=Completed`, `category` → ícono + etiqueta. `recommended_topic` (con `recommended_reason`) → fila recomendada; el agente narra el porqué (pendiente en Figma).
 - **`learning_progress`:** `completion_percentage` → Stat + Progress Fill (color `action-primary`: progreso no es ganancia); `completed_topics` / `total_topics` → «1 de 5»; `category_gaps[]` → categorías sin avance (pendiente en Figma).
-- **`financial_goals_list`:** `detail = summary` solo `progress_percentage` / `months_remaining` / `reaches_goal` / `is_overdue` por meta; `detail = exact` agrega `target_amount` / `current_amount` / `shortfall` / `target_day`. Sin `FinancialProfile` no hay `months_remaining`/`reaches_goal` (no hay tasa que proyectar). Sin gráfica todavía -- pendiente de que Figma le dé una página.
+- **`financial_goals_list`** (propuesto, sin página en Figma -- ver nota de reuso de átomos más abajo): una **Key Value Row** por meta (`name` + `goal_type`); `progress_percentage` → **Progress Fill** (mismo tono `action-primary` que `learning_progress`: progreso no es ganancia) con una **Target Marker** al 100% marcando la meta; `reaches_goal`/`is_overdue` → **Badge** de estado (`En camino` tono positivo · `Fuera de camino` tono warning · `Vencida` tono error) igual que los 6 tonos que ya soporta el átomo; `months_remaining` → **Stat** («X meses restantes»). Sin `FinancialProfile` no hay `months_remaining`/`reaches_goal` (no hay tasa que proyectar) -- la fila se queda solo con el progreso, sin Badge de estado. `detail = exact` agrega **Stat** para `target_amount` / `current_amount` / `shortfall` y **Key Value Row** para `target_day`. Lista vacía → **Empty State** (mismo átomo que `portfolio_summary`/`learning_path` en `State=Empty`). Sin gráfica -- el Progress Fill + Target Marker ya responden la pregunta, como en `learning_progress`.
+
+#### Reuso de átomos para `financial_goals_list`
+
+Ningún átomo de la lista de arriba es nuevo -- los 5 que usa (Key Value Row, Progress Fill, Target Marker, Badge, Stat) más Empty State ya existen y están documentados en [Átomos, marco y shell](#átomos-marco-y-shell). Falta únicamente que Figma arme la página `A2UI / financial_goals_list` componiéndolos (con su frame `_Contract`), no diseñar piezas nuevas.
 
 ## Gráficas
 
