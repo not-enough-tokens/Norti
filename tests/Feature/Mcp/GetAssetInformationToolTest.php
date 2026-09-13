@@ -137,6 +137,32 @@ class GetAssetInformationToolTest extends TestCase
                 ->etc());
     }
 
+    /**
+     * Twelve Data restringe /profile a planes de pago para varios símbolos
+     * (AAPL responde en el plan gratuito, MU y AMZN no) -- eso no debería
+     * tirar la cotización, que ya se obtuvo y es lo esencial de la respuesta.
+     */
+    public function test_omits_the_profile_when_it_is_unavailable_but_still_returns_the_quote(): void
+    {
+        Http::fake([
+            'api.twelvedata.com/quote*' => Http::response(['symbol' => 'AMZN', 'close' => '230.00']),
+            'api.twelvedata.com/profile*' => Http::response([
+                'code' => 403,
+                'message' => '/profile is available exclusively with grow or pro or ultra or venture or enterprise plans.',
+                'status' => 'error',
+            ], 403),
+        ]);
+
+        $user = User::factory()->create();
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(GetAssetInformation::class, ['symbol' => 'AMZN'])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.profile', null)
+                ->where('props.quote.close', '230.00')
+                ->etc());
+    }
+
     public function test_returns_a_clean_error_when_market_data_is_unavailable(): void
     {
         Http::fake([

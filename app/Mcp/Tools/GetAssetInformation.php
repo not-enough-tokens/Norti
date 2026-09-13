@@ -48,7 +48,6 @@ class GetAssetInformation extends Tool
 
         try {
             $quote = $this->marketData->quote($symbol);
-            $profile = $this->marketData->profile($symbol);
         } catch (MarketDataUnavailableException $exception) {
             return $this->errorResponse(
                 $request,
@@ -56,6 +55,17 @@ class GetAssetInformation extends Tool
                 "No se pudo obtener información de mercado para {$symbol}: {$exception->getMessage()}",
                 ['symbol' => $symbol],
             );
+        }
+
+        // /profile requiere un plan de pago de Twelve Data para varios
+        // símbolos (no todos -- AAPL sí responde en el plan gratuito, MU y
+        // AMZN no) -- un fallo aquí no debería tirar la cotización, que ya
+        // obtuvimos y es lo esencial de la respuesta. Mismo criterio que
+        // priceChart() más abajo.
+        try {
+            $profile = $this->marketData->profile($symbol);
+        } catch (MarketDataUnavailableException) {
+            $profile = null;
         }
 
         $this->logToolCall($request, success: true, safeInput: ['symbol' => $symbol]);
