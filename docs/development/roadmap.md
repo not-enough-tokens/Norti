@@ -290,14 +290,14 @@ The system should not only provide financial information or analysis, but also h
 
 ### Capabilities
 
-- educational topics ✅ — `EducationalTopic` model, seeded content, `GET /education` and `GET /education/{educationalTopic}` (auth-protected, plain unstyled Blade views).
-- learning paths ⚠️ partial — `FinancialEducationService::getLearningPath()` returns every topic ordered by `id` with an `is_completed` flag; it's a fixed linear list, not an adaptive path.
-- educational progress ⚠️ partial — readable (`educational_topic_user.completed_at`, surfaced as `is_completed`) but **not writable anywhere in the app**: no route, controller action, or MCP tool sets `completed_at`. Current tests write it directly via `$user->educationalTopics()->attach($topic, ['completed_at' => now()])`, which isn't reachable from the actual product.
-- personalized topic recommendations ❌ — not implemented; recommendation today is "not yet completed", not based on the user's financial situation.
-- contextual explanations ❌ — `FinancialEducationIntegrationService::getFinancialContext()` (profile + goals + portfolios) exists but is **not called anywhere**. It used to be built and discarded unused on every `/education` load (three wasted queries, plus a `FinancialProfile` with exact amounts sitting in the Blade view's scope); that dead call was removed. The service itself was kept because connecting financial context to education is M6's actual objective, just not built yet.
-- identification of relevant knowledge gaps ❌ — not implemented.
+- educational topics ✅ — `EducationalTopic` model, seeded content, `GET /education` and `GET /education/{educationalTopic}` (auth-protected, plain unstyled Blade views), plus `get_educational_topic` over MCP.
+- learning paths ✅ — `FinancialEducationService::getLearningPath()` returns every topic ordered by `id` with an `is_completed` flag; still a fixed linear list, but `get_learning_path` now also surfaces a prioritized `recommended_topic` (see below) on top of it.
+- educational progress ✅ — readable (`educational_topic_user.completed_at`, surfaced as `is_completed`, also via `get_learning_progress`) and now **writable** through the `mark_topic_completed` MCP tool (requires the `mcp:write` scope, granted by every real token-issuing path: `/mcp/token` and the three M5 demo commands).
+- personalized topic recommendations ✅ — `FinancialEducationService::getRecommendedTopic()` connects `FinancialEducationIntegrationService::getFinancialContext()` (profile + goals + portfolios; previously dead code) to a small rule set, evaluated in order against the user's *incomplete* topics: no `FinancialGoal` records → "Ahorro vs inversión"; portfolio concentrated in a single asset → "Diversificación"; conservative `risk_tolerance` (normalized via `RiskAnalysisService::suggestRiskProfile()`, never the raw column) while holding stocks → "Riesgo de inversión"; otherwise the first incomplete topic. Rule-based, not ML -- deliberately simple given the 5-topic seeded catalog. Exposed only through `get_learning_path`'s `recommended_topic` field; no Blade/A2UI surface yet.
+- contextual explanations ⚠️ partial — the recommendation picks a topic based on financial context, but doesn't generate a natural-language explanation of *why*; narrating that is left to the LLM/agent layer once A2UI exists.
+- identification of relevant knowledge gaps ❌ — the 3 rules above are hand-picked heuristics tied to 3 specific topics by slug, not a general gap-detection algorithm.
 
-A separate, unmerged branch (`feature/education-mcp`) adds four MCP tools (`get_educational_topic`, `get_learning_path`, `get_learning_progress`, `mark_topic_completed`) that would close the progress-writing gap and expose this milestone through MCP like the other five milestones — evaluate merging it (after rebasing onto current `master`) before treating M6 as blocked on new work.
+The four MCP tools (`get_educational_topic`, `get_learning_path`, `get_learning_progress`, `mark_topic_completed`, from `feature/education-mcp`) and the recommendation engine above are all merged into `master`.
 
 ### Example Flow
 
@@ -325,7 +325,7 @@ The prototype demonstrates a clear connection between financial intelligence and
 
 ### Status
 
-**In Progress** — topics, a basic learning path, and auth-protected views exist; the financial-intelligence connection and progress-writing are not built yet (see Capabilities above).
+**In Progress** — topics, learning path, progress (read/write), and financial-context recommendations are all built and exposed over MCP (see Capabilities above). What's left: contextual explanations are only partial, general knowledge-gap detection doesn't exist, and none of this has a Blade/A2UI surface for a human using the app directly (MCP-only so far).
 
 ---
 
