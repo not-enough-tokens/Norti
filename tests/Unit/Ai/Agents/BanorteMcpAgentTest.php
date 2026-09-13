@@ -54,6 +54,18 @@ class BanorteMcpAgentTest extends TestCase
         $this->assertStringContainsString('detail=summary', $instructions);
     }
 
+    /**
+     * A2UI contract gap 1 (props.actions[]): sin esta instrucción, el agente
+     * no sabía que existía ese campo ni que debía ofrecerlo como sugerencia
+     * en vez de ejecutarlo por su cuenta.
+     */
+    public function test_instructions_explain_how_to_offer_actions(): void
+    {
+        $instructions = (string) (new BanorteMcpAgent(Mockery::mock(Client::class)))->instructions();
+
+        $this->assertStringContainsString('actions[]', $instructions);
+    }
+
     public function test_tools_spreads_the_mcp_clients_tools(): void
     {
         $client = Mockery::mock(Client::class);

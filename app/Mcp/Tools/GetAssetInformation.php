@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\LogsToolInvocation;
+use App\Mcp\Support\ToolAction;
 use App\Models\Asset;
 use App\Services\Contracts\Exceptions\MarketDataUnavailableException;
 use App\Services\Contracts\MarketDataProviderContract;
@@ -68,6 +69,16 @@ class GetAssetInformation extends Tool
                 ] : null,
                 'quote' => $quote,
                 'profile' => $profile,
+                // simulate_investment no toma un símbolo -- amount/months/
+                // risk_profile los completa el agente por conversación; el
+                // label es lo que ata la acción a este activo.
+                'actions' => [
+                    ToolAction::make(
+                        "simulate_investment_in_{$symbol}",
+                        "Simular inversión en {$symbol}",
+                        'simulate_investment',
+                    ),
+                ],
             ],
         ]);
     }

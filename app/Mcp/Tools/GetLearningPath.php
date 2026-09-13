@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\LogsToolInvocation;
+use App\Mcp\Support\ToolAction;
 use App\Services\FinancialEducationService;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -40,6 +41,17 @@ class GetLearningPath extends Tool
         $learningPath = $this->education->getLearningPath($user);
         $recommendedTopic = $this->education->getRecommendedTopic($user);
 
+        $learningPath->each(function ($topic): void {
+            $topic->actions = [
+                ToolAction::make(
+                    "view_topic_{$topic->id}",
+                    'Ver tema',
+                    'get_educational_topic',
+                    ['topic_id' => $topic->id],
+                ),
+            ];
+        });
+
         $this->logToolCall(
             $request,
             success: true
@@ -50,6 +62,9 @@ class GetLearningPath extends Tool
             'props' => [
                 'topics' => $learningPath,
                 'recommended_topic' => $recommendedTopic,
+                'actions' => [
+                    ToolAction::make('view_progress', 'Ver mi progreso', 'get_learning_progress'),
+                ],
             ],
         ]);
     }

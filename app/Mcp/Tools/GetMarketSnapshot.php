@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\LogsToolInvocation;
+use App\Mcp\Support\ToolAction;
 use App\Services\Contracts\Exceptions\MarketDataUnavailableException;
 use App\Services\Contracts\MarketDataProviderContract;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -49,8 +50,26 @@ class GetMarketSnapshot extends Tool
         foreach ($symbols as $symbol) {
             try {
                 $quotes[$symbol] = $this->marketData->quote($symbol);
+                $quotes[$symbol]['actions'] = [
+                    ToolAction::make(
+                        "view_asset_{$symbol}",
+                        "Ver información de {$symbol}",
+                        'get_asset_information',
+                        ['symbol' => $symbol],
+                    ),
+                ];
             } catch (MarketDataUnavailableException $exception) {
-                $quotes[$symbol] = ['error' => $exception->getMessage()];
+                $quotes[$symbol] = [
+                    'error' => $exception->getMessage(),
+                    'actions' => [
+                        ToolAction::make(
+                            "retry_{$symbol}",
+                            'Reintentar',
+                            'get_market_snapshot',
+                            ['symbols' => [$symbol]],
+                        ),
+                    ],
+                ];
                 $failed++;
             }
         }

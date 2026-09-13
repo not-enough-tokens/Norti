@@ -5,6 +5,7 @@ namespace Tests\Feature\Mcp;
 use App\Mcp\Servers\BanorteServer;
 use App\Mcp\Tools\AnalyzePortfolio;
 use App\Models\Asset;
+use App\Models\EducationalTopic;
 use App\Models\FinancialProfile;
 use App\Models\Holding;
 use App\Models\Portfolio;
@@ -73,6 +74,7 @@ class AnalyzePortfolioToolTest extends TestCase
                     'concentration_warning' => false,
                     'risk_tolerance' => null,
                     'recommended_allocation_by_asset_type' => null,
+                    'actions' => [],
                 ],
             ]);
     }
@@ -182,6 +184,61 @@ class AnalyzePortfolioToolTest extends TestCase
             'tool_name' => 'analyze_portfolio',
             'result_summary' => 'ok',
         ]);
+    }
+
+    public function test_offers_simulate_and_learn_actions_when_recommendation_data_is_available(): void
+    {
+        Http::fake(['api.twelvedata.com/quote*' => Http::response(['symbol' => 'AAPL', 'close' => '150.00'])]);
+
+        $user = User::factory()->create();
+        FinancialProfile::factory()->for($user)->create(['risk_tolerance' => 'moderate']);
+
+        $portfolio = Portfolio::factory()->for($user)->create();
+        $stock = Asset::factory()->create(['symbol' => 'AAPL', 'asset_type' => 'accion']);
+        Holding::factory()->for($portfolio)->for($stock)->create(['quantity' => 10, 'average_cost' => 100]);
+
+        $topic = EducationalTopic::create([
+            'title' => 'Diversificación', 'slug' => 'diversificacion',
+            'description' => '...', 'content' => '...',
+            'category' => 'risk', 'difficulty' => 'beginner', 'estimated_minutes' => 5,
+        ]);
+
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(AnalyzePortfolio::class, [])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.actions', [
+                [
+                    'id' => 'simulate_with_recommended_profile',
+                    'label' => 'Simular con perfil recomendado',
+                    'tool' => 'simulate_investment',
+                    'params' => ['risk_profile' => 'moderate'],
+                ],
+                [
+                    'id' => 'learn_diversification',
+                    'label' => 'Aprender a diversificar',
+                    'tool' => 'get_educational_topic',
+                    'params' => ['topic_id' => $topic->id],
+                ],
+            ])->etc());
+    }
+
+    public function test_omits_the_diversification_action_when_the_topic_is_not_seeded(): void
+    {
+        $user = User::factory()->create();
+        FinancialProfile::factory()->for($user)->create(['risk_tolerance' => 'moderate']);
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(AnalyzePortfolio::class, [])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.actions', [
+                [
+                    'id' => 'simulate_with_recommended_profile',
+                    'label' => 'Simular con perfil recomendado',
+                    'tool' => 'simulate_investment',
+                    'params' => ['risk_profile' => 'moderate'],
+                ],
+            ])->etc());
     }
 
     public function test_rejects_without_the_mcp_read_scope(): void

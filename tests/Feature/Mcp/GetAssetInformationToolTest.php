@@ -39,6 +39,14 @@ class GetAssetInformationToolTest extends TestCase
                 ->where('props.local_asset.asset_type', 'accion')
                 ->where('props.quote.close', '150.00')
                 ->where('props.profile.sector', 'Technology')
+                ->where('props.actions', [
+                    [
+                        'id' => 'simulate_investment_in_AAPL',
+                        'label' => 'Simular inversión en AAPL',
+                        'tool' => 'simulate_investment',
+                        'params' => [],
+                    ],
+                ])
                 ->etc());
     }
 

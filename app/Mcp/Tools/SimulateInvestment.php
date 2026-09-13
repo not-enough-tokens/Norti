@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\LogsToolInvocation;
+use App\Mcp\Support\ToolAction;
 use App\Services\Contracts\InvestmentSimulationServiceContract;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -39,11 +40,12 @@ class SimulateInvestment extends Tool
             'risk_profile' => ['required', 'string', 'in:conservative,moderate,aggressive'],
         ]);
 
-        $result = $this->simulation->simulate(
-            (float) $validated['amount'],
-            (int) $validated['months'],
-            $validated['risk_profile'],
-        );
+        $amount = (float) $validated['amount'];
+        $months = (int) $validated['months'];
+        $riskProfile = $validated['risk_profile'];
+
+        $result = $this->simulation->simulate($amount, $months, $riskProfile);
+        $result['actions'] = $this->buildActions($amount, $months, $riskProfile);
 
         // Never log "amount" -- CLAUDE.md's audit policy forbids exact amounts in audit_logs.
         $this->logToolCall($request, success: true, safeInput: [
@@ -55,6 +57,52 @@ class SimulateInvestment extends Tool
             'component' => 'simulation_result_card',
             'props' => $result,
         ]);
+    }
+
+    /**
+     * Option Chip (plazo) y Option Row (perfil) del contrato A2UI: cada
+     * alternativa re-ejecuta esta misma tool con un parámetro cambiado,
+     * nunca recalcula nada del lado del componente.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function buildActions(float $amount, int $months, string $riskProfile): array
+    {
+        $actions = [];
+
+        foreach ([12, 36, 60] as $alternateMonths) {
+            if ($alternateMonths === $months) {
+                continue;
+            }
+
+            $actions[] = ToolAction::make(
+                "resimulate_{$alternateMonths}_months",
+                "Simular a {$alternateMonths} meses",
+                'simulate_investment',
+                ['amount' => $amount, 'months' => $alternateMonths, 'risk_profile' => $riskProfile],
+            );
+        }
+
+        $profileLabels = [
+            'conservative' => 'Perfil conservador',
+            'moderate' => 'Perfil moderado',
+            'aggressive' => 'Perfil agresivo',
+        ];
+
+        foreach ($profileLabels as $alternateProfile => $label) {
+            if ($alternateProfile === $riskProfile) {
+                continue;
+            }
+
+            $actions[] = ToolAction::make(
+                "resimulate_{$alternateProfile}",
+                $label,
+                'simulate_investment',
+                ['amount' => $amount, 'months' => $months, 'risk_profile' => $alternateProfile],
+            );
+        }
+
+        return $actions;
     }
 
     /**

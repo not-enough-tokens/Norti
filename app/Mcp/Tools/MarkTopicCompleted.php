@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\LogsToolInvocation;
+use App\Mcp\Support\ToolAction;
 use App\Models\EducationalTopic;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -61,6 +62,10 @@ class MarkTopicCompleted extends Tool
                 'topic_id' => $topic->id,
                 'title' => $topic->title,
                 'completed' => true,
+                'actions' => [
+                    ToolAction::make('view_progress', 'Ver mi progreso', 'get_learning_progress'),
+                    ToolAction::make('next_topic', 'Siguiente tema', 'get_learning_path'),
+                ],
             ],
         ]);
     }

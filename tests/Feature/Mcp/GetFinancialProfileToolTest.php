@@ -36,6 +36,14 @@ class GetFinancialProfileToolTest extends TestCase
                     'risk_tolerance' => 'moderate',
                     'investment_horizon_months' => 36,
                     'savings_rate_category' => 'high',
+                    'actions' => [
+                        [
+                            'id' => 'simulate_with_my_profile',
+                            'label' => 'Simular con mi perfil',
+                            'tool' => 'simulate_investment',
+                            'params' => ['risk_profile' => 'moderate'],
+                        ],
+                    ],
                 ],
             ]);
     }
@@ -57,6 +65,18 @@ class GetFinancialProfileToolTest extends TestCase
                 ->where('props.monthly_income', 20000)
                 ->where('props.monthly_expenses', 15000)
                 ->where('props.savings', 5000)
+                ->etc());
+    }
+
+    public function test_offers_no_actions_when_the_user_has_no_profile(): void
+    {
+        $user = User::factory()->create();
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(GetFinancialProfile::class, [])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.has_profile', false)
+                ->where('props.actions', [])
                 ->etc());
     }
 
