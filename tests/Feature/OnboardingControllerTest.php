@@ -86,8 +86,8 @@ class OnboardingControllerTest extends TestCase
         $final = $this->get('/onboarding');
         $final->assertSee('¡Listo!', false);
         $final->assertSee('Moderado', false);
-        $final->assertSee('Empezar un nuevo chat');
-        $final->assertSee('Ver recursos educativos');
+        $final->assertSee('Hablar con Norti');
+        $final->assertSee('Ver educación');
     }
 
     /** La pregunta de riesgo se responde con las 3 opciones fijas (Option Chip), no texto libre. */
@@ -139,7 +139,7 @@ class OnboardingControllerTest extends TestCase
 
         $response->assertDontSee('¿Cuánto es lo que ganas al mes?');
         $response->assertSee('¿En qué te puedo ayudar hoy?', false);
-        $response->assertSee('Empezar un nuevo chat');
+        $response->assertSee('Hablar con Norti');
     }
 
     public function test_returning_users_with_a_profile_skip_the_fixed_questions_on_a_fresh_session(): void
@@ -150,7 +150,7 @@ class OnboardingControllerTest extends TestCase
         $response = $this->actingAs($user)->get('/onboarding');
 
         $response->assertDontSee('¿Cuánto es lo que ganas al mes?');
-        $response->assertSee('Empezar un nuevo chat');
+        $response->assertSee('Hablar con Norti');
     }
 
     /**
