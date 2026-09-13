@@ -43,7 +43,7 @@ PortfolioService
     ↓
 RiskAnalysisService
     ↓
-Portfolio / MarketDataProvider
+Portfolio / MarketDataProviderContract
     ↓
 Structured result
 ```

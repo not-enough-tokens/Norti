@@ -41,16 +41,18 @@ Twelve Data must not be accessed directly by application services.
 The intended flow is:
 
 ```text
-MarketDataService
+MCP Tool / HTTP Controller
        ↓
-MarketDataProvider
+MarketDataProviderContract
        ↓
-TwelveDataProvider
+TwelveDataMarketDataProvider
        ↓
 TwelveDataClient
        ↓
 Twelve Data API
 ```
+
+> **Update:** two independent implementations of this abstraction were built in parallel during the hackathon (`MarketDataProvider`/`TwelveDataProvider`/`MarketDataService`, and `MarketDataProviderContract`/`TwelveDataMarketDataProvider`). They were consolidated into a single one — see the update note on [ADR 003](003-market-data-provider-abstraction.md) for details. There is no `MarketDataService` layer for market data: MCP tools and `MarketDataController` depend on `MarketDataProviderContract` directly.
 
 ## Consequences
 
@@ -93,4 +95,6 @@ Not selected as the backend provider.
 
 Application code outside the provider layer must not depend on Twelve Data-specific field names or response structures.
 
-Changing the market-data provider should primarily require implementing another `MarketDataProvider`.
+Changing the market-data provider should primarily require implementing another `MarketDataProviderContract`.
+
+Note: `quote()`/`profile()` currently pass through Twelve Data's response with light typing only; `timeSeries()` normalizes each entry into a typed price bar. See the update note on [ADR 003](003-market-data-provider-abstraction.md).

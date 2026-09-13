@@ -39,9 +39,7 @@ The system should remain functional and testable independently of the AI agent.
 │  RiskAnalysisService                                 │
 │  InvestmentSimulationService                         │
 │  FinancialEducationService                           │
-│  MarketDataService                                   │
 └───────────────┬───────────────────────┬──────────────┘
-                │                       │
                 ↓                       ↓
 ┌─────────────────────────┐   ┌────────────────────────┐
 │      Domain/Data        │   │     Infrastructure     │
@@ -54,6 +52,8 @@ The system should remain functional and testable independently of the AI agent.
                                   │   Twelve Data   │
                                   └─────────────────┘
 ```
+
+Market data is the one capability without a dedicated Application Service: MCP tools and `MarketDataController` depend directly on `MarketDataProviderContract` (see §3.4). There is no `MarketDataService`.
 
 ---
 
@@ -113,7 +113,8 @@ Examples:
 - `RiskAnalysisService`
 - `InvestmentSimulationService`
 - `FinancialEducationService`
-- `MarketDataService`
+
+Market data is the exception: MCP tools and `MarketDataController` depend on `MarketDataProviderContract` directly (§3.4) rather than through a dedicated service, since Twelve Data's provider layer already returns application-ready data with no further business logic to apply.
 
 Services should be callable independently from MCP.
 
@@ -155,34 +156,35 @@ External financial APIs must not be called directly from financial business logi
 The application defines an internal contract:
 
 ```php
-interface MarketDataProvider
+interface MarketDataProviderContract
 {
-    public function getQuote(string $symbol): array;
+    public function quote(string $symbol, array $parameters = []): array;
 
-    public function getHistoricalPrices(
+    public function profile(string $symbol, array $parameters = []): array;
+
+    public function timeSeries(
         string $symbol,
-        string $interval = '1day'
+        string $interval,
+        array $parameters = []
     ): array;
-
-    public function getAssetProfile(string $symbol): array;
 }
 ```
 
-The initial implementation is:
+The initial (and only) implementation is:
 
 ```text
-MarketDataProvider
+MarketDataProviderContract
         ↑
-TwelveDataProvider
+TwelveDataMarketDataProvider
         ↓
 TwelveDataClient
         ↓
 Twelve Data API
 ```
 
-`MarketDataProvider` defines what the application needs.
+`MarketDataProviderContract` defines what the application needs.
 
-`TwelveDataProvider` translates Twelve Data's API response into the application's internal format.
+`TwelveDataMarketDataProvider` adapts Twelve Data's API into that contract: `quote()`/`profile()` pass the response through close to unmodified (cached 60s to respect Twelve Data's free-tier rate limit), while `timeSeries()` normalizes each entry into a typed price bar. It also wraps `TwelveDataException` into a provider-agnostic `MarketDataUnavailableException`.
 
 `TwelveDataClient` is responsible for HTTP communication with Twelve Data.
 
@@ -193,17 +195,17 @@ Twelve Data API
 The provider architecture follows an adapter-style approach.
 
 ```text
-                         ┌─────────────────────┐
-                         │ MarketDataProvider  │
-                         │      interface     │
-                         └──────────┬──────────┘
-                                    │
-                     ┌──────────────┴──────────────┐
-                     ↓                             ↓
-          ┌────────────────────┐        ┌────────────────────┐
-          │ TwelveDataProvider │        │  FutureProvider    │
-          └─────────┬──────────┘        └────────────────────┘
-                    ↓
+                    ┌───────────────────────────┐
+                    │ MarketDataProviderContract│
+                    │        interface          │
+                    └─────────────┬─────────────┘
+                                  │
+                   ┌──────────────┴──────────────┐
+                   ↓                             ↓
+      ┌─────────────────────────────┐  ┌────────────────────┐
+      │ TwelveDataMarketDataProvider│  │  FutureProvider    │
+      └──────────────┬──────────────┘  └────────────────────┘
+                      ↓
           ┌────────────────────┐
           │ TwelveDataClient   │
           └─────────┬──────────┘
@@ -226,18 +228,18 @@ Dependencies should point toward abstractions where appropriate.
 For example:
 
 ```text
-MarketDataService
+MCP Tool / MarketDataController
        ↓
-MarketDataProvider
+MarketDataProviderContract
        ↑
-TwelveDataProvider
+TwelveDataMarketDataProvider
        ↓
 TwelveDataClient
        ↓
 External API
 ```
 
-`MarketDataService` should not depend directly on `TwelveDataClient`.
+MCP tools and `MarketDataController` should not depend directly on `TwelveDataClient`.
 
 This allows tests to replace the real provider with:
 
@@ -359,11 +361,11 @@ TwelveDataClient
       ↓
 TwelveDataException
       ↓
-MarketDataService
+MarketDataUnavailableException (TwelveDataMarketDataProvider)
       ↓
-MCP Tool
+MCP Tool / MarketDataController
       ↓
-Structured MCP error
+Structured MCP error / HTTP error response
 ```
 
 External provider errors should not expose secrets or unnecessary implementation details to the AI agent or end user.
@@ -385,7 +387,7 @@ Verify communication between application components.
 Examples:
 
 ```text
-MarketDataService
+MarketDataController
         ↓
 MockMarketDataProvider
 ```
@@ -393,7 +395,7 @@ MockMarketDataProvider
 and:
 
 ```text
-TwelveDataProvider
+TwelveDataMarketDataProvider
         ↓
 TwelveDataClient
 ```
