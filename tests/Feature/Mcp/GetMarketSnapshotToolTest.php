@@ -57,6 +57,34 @@ class GetMarketSnapshotToolTest extends TestCase
                 ->etc());
     }
 
+    public function test_includes_a_column_chart_with_the_percent_change_per_symbol(): void
+    {
+        Http::fake(function (Request $request) {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+            return match ($query['symbol'] ?? null) {
+                'AAPL' => Http::response(['symbol' => 'AAPL', 'close' => '150.00', 'percent_change' => '1.24']),
+                'MSFT' => Http::response(['symbol' => 'MSFT', 'close' => '300.00', 'percent_change' => '-0.82']),
+                default => Http::response(['status' => 'error', 'message' => 'unknown'], 400),
+            };
+        });
+
+        $user = User::factory()->create();
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(GetMarketSnapshot::class, ['symbols' => ['AAPL', 'MSFT', 'CETES28']])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.chart.type', 'column')
+                ->where('props.chart.unit', 'percent')
+                ->where('props.chart.data', [
+                    ['key' => 'AAPL', 'value' => 1.24],
+                    ['key' => 'MSFT', 'value' => -0.82],
+                    ['key' => 'CETES28', 'value' => null],
+                ])
+                ->where('props.chart.y_axis.domain', [-1.24, 1.24])
+                ->etc());
+    }
+
     /**
      * Los fallos por símbolo se devuelven en el payload en vez de abortar, así
      * que el audit log registraba 'ok' aunque no se obtuviera una sola cotización.

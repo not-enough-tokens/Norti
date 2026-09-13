@@ -34,6 +34,32 @@ class TwelveDataMarketDataProviderTest extends TestCase
         );
     }
 
+    /**
+     * Twelve Data sends `percent_change` as a numeric string; the column
+     * chart in `market_snapshot_grid` needs a real float (A2UI contract gap 16).
+     */
+    public function test_quote_normalizes_percent_change_to_a_float(): void
+    {
+        $client = Mockery::mock(TwelveDataClient::class);
+        $client->shouldReceive('quote')
+            ->once()
+            ->andReturn(['symbol' => 'AAPL', 'close' => '150.00', 'percent_change' => '1.24']);
+
+        $provider = new TwelveDataMarketDataProvider($client);
+
+        $this->assertSame(1.24, $provider->quote('AAPL')['percent_change']);
+    }
+
+    public function test_quote_survives_a_missing_percent_change(): void
+    {
+        $client = Mockery::mock(TwelveDataClient::class);
+        $client->shouldReceive('quote')->once()->andReturn(['symbol' => 'AAPL', 'close' => '150.00']);
+
+        $provider = new TwelveDataMarketDataProvider($client);
+
+        $this->assertArrayNotHasKey('percent_change', $provider->quote('AAPL'));
+    }
+
     public function test_profile_forwards_the_symbol_and_parameters_to_the_client(): void
     {
         $client = Mockery::mock(TwelveDataClient::class);

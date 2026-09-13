@@ -24,6 +24,7 @@ class MockMarketDataProvider implements MarketDataProviderContract
             'low' => '98.50',
             'close' => '100.00',
             'volume' => '1000000',
+            'percent_change' => 1.0,
         ];
     }
 
