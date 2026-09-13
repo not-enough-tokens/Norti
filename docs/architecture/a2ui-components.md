@@ -52,8 +52,9 @@ El agente decide la siguiente tool; el componente nunca calcula el resultado por
 | `learning_progress` | `get_learning_progress` · `mcp:read` | `State=In Progress \| Not Started \| Complete` | — (Progress Fill basta) | Continuar con el siguiente tema → `get_learning_path` |
 | `learning_topic_completed` | `mark_topic_completed` · `mcp:write` | `State=Saving \| Completed` | — | Ver mi progreso → `get_learning_progress` · Siguiente tema |
 | `tool_error` | cualquier `Response::error` | `Kind=Scope Denied \| Market Data \| Generic` | — | Iniciar nueva sesión (`POST /mcp/token`) · Reintentar |
+| `financial_goals_list` | `get_financial_goals` · `mcp:read` | **Sin spec en Figma** -- ADR 006 se construyó después del audit de componentes | — | Ver mi perfil financiero · por meta, si no está en camino: Simular una inversión para esta meta |
 
-Cada página `A2UI / <component>` en Figma trae un frame `_Contract` con el mapeo props → capas, un JSON de ejemplo, la gráfica que le toca y las brechas que le aplican.
+Cada página `A2UI / <component>` en Figma trae un frame `_Contract` con el mapeo props → capas, un JSON de ejemplo, la gráfica que le toca y las brechas que le aplican. `financial_goals_list` es la excepción: no tiene página en Figma todavía, así que sus variantes/gráfica quedan pendientes de que el equipo de diseño lo agregue.
 
 ### Mapeo de props relevantes
 
@@ -65,6 +66,7 @@ Cada página `A2UI / <component>` en Figma trae un frame `_Contract` con el mape
 - **`market_snapshot_grid`:** `quotes[SYMBOL]` con datos → Quote Tile OK; `quotes[SYMBOL].error` → Quote Tile Error; `chart` → Chart / Column.
 - **`learning_path`:** `topics[]` → una Topic Row por tema; `is_completed` → `Status=Completed`, `category` → ícono + etiqueta. `recommended_topic` (con `recommended_reason`) → fila recomendada; el agente narra el porqué (pendiente en Figma).
 - **`learning_progress`:** `completion_percentage` → Stat + Progress Fill (color `action-primary`: progreso no es ganancia); `completed_topics` / `total_topics` → «1 de 5»; `category_gaps[]` → categorías sin avance (pendiente en Figma).
+- **`financial_goals_list`:** `detail = summary` solo `progress_percentage` / `months_remaining` / `reaches_goal` / `is_overdue` por meta; `detail = exact` agrega `target_amount` / `current_amount` / `shortfall` / `target_day`. Sin `FinancialProfile` no hay `months_remaining`/`reaches_goal` (no hay tasa que proyectar). Sin gráfica todavía -- pendiente de que Figma le dé una página.
 
 ## Gráficas
 
