@@ -19,10 +19,12 @@ use Illuminate\Support\ServiceProvider;
  *
  * RiskAnalysisServiceAdapter/InvestmentSimulationServiceAdapter wrap
  * Integrante A/M2's real RiskAnalysisService/InvestmentSimulationService.
- * MarketDataProviderContract still binds to our own TwelveDataMarketDataProvider
- * rather than Integrante C's TwelveDataProvider (app/Services/MarketData) --
- * that one's getHistoricalPrices()/getAssetProfile() are still stubs, so
- * switching would regress get_asset_information/get_market_snapshot.
+ * MarketDataProviderContract binds to TwelveDataMarketDataProvider, which is
+ * now the single M4 market-data implementation (quote/profile pass through
+ * Twelve Data's raw payload; timeSeries() normalizes bars) -- the parallel
+ * MarketDataProvider/TwelveDataProvider interface Integrante C had been
+ * building separately was retired and its historical-prices/asset-profile
+ * logic folded in here, so no second provider abstraction exists anymore.
  */
 class DomainServiceProvider extends ServiceProvider
 {

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\MarketData;
 
-use App\Services\MarketData\MarketDataProvider;
+use App\Services\Contracts\MarketDataProviderContract;
 use App\Services\MarketData\MockMarketDataProvider;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -13,7 +13,7 @@ class MarketDataControllerMockProviderTest extends TestCase
     {
         parent::setUp();
 
-        $this->app->bind(MarketDataProvider::class, MockMarketDataProvider::class);
+        $this->app->bind(MarketDataProviderContract::class, MockMarketDataProvider::class);
 
         Http::preventStrayRequests();
     }
