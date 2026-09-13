@@ -9,7 +9,7 @@ class EducationalTopicSeeder extends Seeder
 {
     public function run(): void
     {
-        EducationalTopic::create([
+        EducationalTopic::firstOrCreate(['slug' => 'ahorro-vs-inversion'], [
             'title' => 'Ahorro vs inversión',
             'slug' => 'ahorro-vs-inversion',
             'description' => 'Aprende la diferencia entre ahorrar e invertir y cuándo puede ser útil cada opción.',
@@ -19,7 +19,7 @@ class EducationalTopicSeeder extends Seeder
             'estimated_minutes' => 5,
         ]);
 
-        EducationalTopic::create([
+        EducationalTopic::firstOrCreate(['slug' => 'interes-compuesto'], [
             'title' => 'Interés compuesto',
             'slug' => 'interes-compuesto',
             'description' => 'Descubre cómo tus rendimientos pueden generar nuevos rendimientos con el paso del tiempo.',
@@ -29,7 +29,7 @@ class EducationalTopicSeeder extends Seeder
             'estimated_minutes' => 5,
         ]);
 
-        EducationalTopic::create([
+        EducationalTopic::firstOrCreate(['slug' => 'acciones'], [
             'title' => 'Acciones',
             'slug' => 'acciones',
             'description' => 'Conoce qué son las acciones y qué significa invertir en una empresa.',
@@ -39,7 +39,7 @@ class EducationalTopicSeeder extends Seeder
             'estimated_minutes' => 6,
         ]);
 
-        EducationalTopic::create([
+        EducationalTopic::firstOrCreate(['slug' => 'diversificacion'], [
             'title' => 'Diversificación',
             'slug' => 'diversificacion',
             'description' => 'Comprende cómo distribuir una inversión entre diferentes activos puede ayudar a administrar el riesgo.',
@@ -49,7 +49,7 @@ class EducationalTopicSeeder extends Seeder
             'estimated_minutes' => 5,
         ]);
 
-        EducationalTopic::create([
+        EducationalTopic::firstOrCreate(['slug' => 'riesgo-de-inversion'], [
             'title' => 'Riesgo de inversión',
             'slug' => 'riesgo-de-inversion',
             'description' => 'Conoce los principales tipos de riesgo que pueden afectar una inversión.',
