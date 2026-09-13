@@ -10,6 +10,25 @@ class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_root_url_sends_a_logged_in_user_straight_to_onboarding(): void
+    {
+        $user = User::factory()->create();
+
+        // `/` -> /login -> onboarding (el `guest` middleware de /login hace el
+        // segundo salto, ver bootstrap/app.php).
+        $response = $this->actingAs($user)->followingRedirects()->get('/');
+
+        $response->assertOk();
+        $response->assertViewIs('onboarding.index');
+    }
+
+    public function test_root_url_sends_a_guest_to_login(): void
+    {
+        $response = $this->get('/');
+
+        $response->assertRedirect(route('login'));
+    }
+
     public function test_login_screen_can_be_rendered(): void
     {
         $response = $this->get('/login');
@@ -59,6 +78,6 @@ class AuthenticationTest extends TestCase
         $response = $this->actingAs($user)->post('/logout');
 
         $this->assertGuest();
-        $response->assertRedirect('/login');
+        $response->assertRedirect('/');
     }
 }

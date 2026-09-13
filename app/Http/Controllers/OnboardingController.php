@@ -95,7 +95,7 @@ class OnboardingController extends Controller
         if (! $session->has(self::SESSION_KEY)) {
             $session->put(self::SESSION_KEY, [
                 'messages' => [
-                    ['role' => 'assistant', 'text' => "Hola {$request->user()->name}, ¿en qué te puede ayudar Norti el día de hoy?"],
+                    ['role' => 'assistant', 'text' => "Hola {$request->user()->name}, soy Norti, ¿en qué puedo ayudarte hoy?"],
                 ],
                 'step' => 'intro',
                 'answers' => [],

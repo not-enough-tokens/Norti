@@ -47,7 +47,7 @@ class OnboardingControllerTest extends TestCase
 
         $response = $this->actingAs($user)->get('/onboarding');
 
-        $response->assertSee('Hola Ana López, ¿en qué te puede ayudar Norti el día de hoy?');
+        $response->assertSee('Hola Ana López, soy Norti, ¿en qué puedo ayudarte hoy?');
     }
 
     public function test_full_conversation_creates_a_financial_profile(): void
