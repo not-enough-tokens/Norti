@@ -28,4 +28,20 @@ class McpDebugAuditLogsTest extends TestCase
 
         $response->assertOk()->assertJsonFragment(['tool_name' => 'simulate_investment']);
     }
+
+    /**
+     * Los /mcp-test/* están pensados solo para local/testing -- antes esto se
+     * garantizaba envolviendo las rutas en `if (app()->environment(...))` en
+     * routes/web.php, lo cual nunca se probó (las rutas se registran una vez
+     * al boot, cambiar el entorno a mitad de un test no las quita). Ahora es
+     * EnsureDebugRoutesAreAllowed, un middleware que sí corre por request.
+     */
+    public function test_the_debug_routes_are_unreachable_outside_local_and_testing(): void
+    {
+        $this->app['env'] = 'production';
+
+        $this->getJson('/mcp-test/audit-logs')->assertNotFound();
+        $this->getJson('/mcp-test')->assertNotFound();
+        $this->getJson('/mcp-test/seed')->assertNotFound();
+    }
 }
