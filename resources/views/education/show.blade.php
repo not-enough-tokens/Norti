@@ -72,7 +72,7 @@
                             </form>
                         @endunless
 
-                        <x-button variant="secondary" :href="route('onboarding.index')" class="w-full sm:w-auto">
+                        <x-button variant="secondary" :href="route('onboarding.index', ['topic' => $topic->slug])" class="w-full sm:w-auto">
                             {{ $isCompleted ? 'Repasar con el asistente' : 'Preguntar al asistente' }}
                             <x-icon.chevron-right class="size-4" />
                         </x-button>

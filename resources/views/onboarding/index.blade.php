@@ -29,7 +29,20 @@
                 @endif
 
                 @if ($isDone)
-                    <x-button :href="route('education.index')" class="w-full">Continuar</x-button>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <form method="POST" action="{{ route('onboarding.restart') }}">
+                            @csrf
+                            <x-button class="w-full">Empezar un nuevo chat</x-button>
+                        </form>
+
+                        <x-button variant="secondary" :href="route('education.index')" class="w-full">Ver recursos educativos</x-button>
+                    </div>
+                @elseif ($step === 'risk')
+                    <div class="flex flex-wrap gap-3">
+                        @foreach ($riskOptions as $value => $label)
+                            <x-chip :action="route('onboarding.chat')" :value="$value" :label="$label" />
+                        @endforeach
+                    </div>
                 @else
                     <form method="POST" action="{{ route('onboarding.chat') }}">
                         @csrf

@@ -66,6 +66,38 @@ class RegistrationTest extends TestCase
         $this->assertGuest();
     }
 
+    /**
+     * "Ana@x.com" y "ana@x.com" no deben poder registrarse como dos cuentas
+     * distintas -- ver migración users_email_lower_unique.
+     */
+    public function test_registration_treats_email_as_case_insensitive_for_uniqueness(): void
+    {
+        User::factory()->create(['email' => 'ana@example.com']);
+
+        $response = $this->post('/register', [
+            'name' => 'Otra Ana',
+            'email' => 'Ana@Example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertSessionHasErrors(['email' => 'Ya existe una cuenta con este correo.']);
+        $this->assertGuest();
+    }
+
+    public function test_registration_stores_the_email_in_lowercase(): void
+    {
+        $this->post('/register', [
+            'name' => 'Ana López',
+            'email' => 'Ana.Lopez@Example.COM',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $this->assertDatabaseHas('users', ['email' => 'ana.lopez@example.com']);
+        $this->assertDatabaseMissing('users', ['email' => 'Ana.Lopez@Example.COM']);
+    }
+
     public function test_registration_requires_matching_password_confirmation(): void
     {
         $response = $this->post('/register', [

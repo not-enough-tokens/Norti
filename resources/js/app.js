@@ -18,3 +18,26 @@ document.addEventListener('keydown', (event) => {
         details.open = false;
     });
 });
+
+// Botón "mostrar contraseña" (form.text-field): alterna el type del input
+// entre password/text y swapea el ícono eye/eye-off.
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-password-toggle]');
+
+    if (!button) {
+        return;
+    }
+
+    const input = document.getElementById(button.dataset.passwordToggle);
+
+    if (!input) {
+        return;
+    }
+
+    const willShow = input.type === 'password';
+    input.type = willShow ? 'text' : 'password';
+    button.setAttribute('aria-pressed', String(willShow));
+    button.setAttribute('aria-label', willShow ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    button.querySelector('[data-password-toggle-icon="show"]').hidden = willShow;
+    button.querySelector('[data-password-toggle-icon="hide"]').hidden = !willShow;
+});
