@@ -69,6 +69,10 @@ class RiskAnalysisServiceAdapter implements RiskAnalysisServiceContract
             'allocation_by_asset_type' => $this->withEveryAssetType($allocation),
             'diversification_score' => round(1 - $herfindahl, 4),
             'concentration_warning' => max($allocation) > 50.0,
+            // Significa "ningún holding se quedó sin valuar", no "todo se
+            // cotizó en vivo": el efectivo se valúa a valor facial sin tocar el
+            // proveedor. El detalle exacto por posición está en el
+            // `valuation_source` de cada holding.
             'priced_with_live_market_data' => ! $hasUnpricedHoldings,
             'risk_tolerance' => $riskTolerance,
             'recommended_allocation_by_asset_type' => $recommendedAllocation,

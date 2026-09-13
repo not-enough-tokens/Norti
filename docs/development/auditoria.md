@@ -32,8 +32,8 @@ también se registran — saber que algo *no* está roto tiene valor.
 | 14 | `efectivo` sin cubeta en las distribuciones recomendadas | M2 | Media | ✅ Arreglado (ADR 005, opción B) |
 | — | Fuga del `apikey` de TwelveData al LLM | M4 | — | ❌ Falso positivo |
 | 15 | Techo de TwelveData es por cuenta, no por usuario | M4 | Media | ⚠️ Limitación conocida |
-| 16 | `efectivo` se intenta cotizar como símbolo de mercado | M2/M4 | Baja | 🔲 Pendiente |
-| 17 | Metas financieras sin cablear a ninguna tool ni vista | M2/M3 | Media | 🔲 Pendiente |
+| 16 | `efectivo` se intenta cotizar como símbolo de mercado | M2/M4 | Media | ✅ Arreglado |
+| 17 | Metas financieras sin cablear a ninguna tool ni vista | M2/M3 | Media | 📋 Propuesta en ADR 006 |
 
 ---
 
@@ -177,6 +177,34 @@ buscándola en el mensaje resultante. No se cambió nada.
 
 ---
 
+### 16. `efectivo` se intentaba cotizar como símbolo de mercado
+
+`EloquentPortfolioService` pedía precio para el `symbol` de **todo** holding,
+incluido el de efectivo. El efectivo no es un instrumento cotizable, así que
+TwelveData responde error siempre.
+
+**Verificado** (con una respuesta de error realista del proveedor):
+
+```
+current_price => null,  market_value => null,  unrealized_gain => null
+Llamadas HTTP gastadas: 1
+```
+
+Dos consecuencias: una llamada desperdiciada por holding de efectivo contra el
+techo de 8 req/min, y el activo cuyo valor se conoce **con certeza** reportado
+como no valuado. Un portafolio solo de efectivo salía además con
+`priced_with_live_market_data => false`.
+
+`MockMarketDataProvider` lo escondía porque cotiza cualquier símbolo.
+
+**Arreglo:** `config('investment_rules.non_quotable_asset_types')` lista los
+tipos que no se cotizan; el efectivo se valúa a valor facial sin tocar el
+proveedor. Cada holding ahora expone `valuation_source` (`market` / `face_value`
+/ `null`) para que el consumidor no confunda ambas cosas. Cero llamadas HTTP
+para efectivo, verificado con `Http::assertNothingSent()`.
+
+---
+
 ## Pendientes y limitaciones conocidas
 
 ### 15. El techo de TwelveData es por cuenta, no por usuario
@@ -186,15 +214,13 @@ aplica a **toda la cuenta**. Ocho usuarios autenticados a 8 req/min siguen
 agotando la cuota. Un throttle de Laravel no puede resolver esto; haría falta un
 limitador global (o de plano un plan de pago).
 
-### 16. `efectivo` se intenta cotizar como símbolo de mercado
-
-`EloquentPortfolioService` pide precio para el `symbol` de todo holding,
-incluido el de efectivo. Contra TwelveData real eso va a fallar siempre y marcar
-el holding como no valuado. `MockMarketDataProvider` lo esconde porque cotiza
-cualquier símbolo. Relacionado con el ADR 005, opción C.
-
 ### 17. Metas financieras sin cablear
 
 `FinancialGoal`, `projectForGoal()` y `evaluateGoal()` funcionan y ahora tienen
 tests, pero **nada los llama**: no hay MCP tool, ni ruta, ni vista. Es capacidad
 construida y no expuesta.
+
+Propuesta de solución documentada en
+[ADR 006](../decisions/006-get-financial-goals-tool.md) — una 7ª tool read-only.
+**Pendiente de decisión**, porque el catálogo de 6 tools es una decisión cerrada
+en CLAUDE.md y la tool tocaría montos exactos (política de datos sensibles).

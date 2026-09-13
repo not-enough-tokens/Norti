@@ -48,4 +48,11 @@ return [
     // `efectivo` a propósito no aparece en ningún perfil de asset_allocation:
     // esa calibración es de Integrante A y no se cambió aquí.
     'asset_types' => ['accion', 'bono', 'fondo', 'efectivo'],
+
+    // Tipos de activo que NO se cotizan contra el proveedor de market data.
+    // El efectivo no es un instrumento cotizable: pedirle precio a TwelveData
+    // siempre falla, gasta una llamada de la cuota y deja el holding marcado
+    // como no valuado, cuando en realidad es el único cuyo valor se conoce con
+    // certeza. Se valúa a valor facial (cost_basis).
+    'non_quotable_asset_types' => ['efectivo'],
 ];
