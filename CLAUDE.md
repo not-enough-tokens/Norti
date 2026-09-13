@@ -108,7 +108,13 @@ php artisan make:mcp-server <Nombre>
 php artisan make:mcp-tool <Nombre>
 
 # Testing manual del server (Streamable HTTP — NO usar STDIO en Windows)
-php artisan serve
+# `php artisan serve` normal atiende UNA request a la vez. /chat (ChatController)
+# y los comandos mcp:client-*/mcp:demo-agent se auto-llaman por HTTP a este mismo
+# server (ver nota en routes/web.php) -- con un solo worker eso es un auto-deadlock:
+# la request externa (POST /chat) nunca libera el proceso para atender la interna
+# (POST /mcp/banorte), que truena con "HTTP request failed" y /chat cae al mensaje
+# de error genérico. Arreglo: correr el server con varios workers.
+PHP_CLI_SERVER_WORKERS=4 php artisan serve
 php artisan mcp:inspector /mcp/banorte
 
 # M5 paso 1 (verificado): solo list_tools(), sin LLM ni agente
