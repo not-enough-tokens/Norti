@@ -82,4 +82,96 @@ class EducationalTopicControllerTest extends TestCase
             fn ($path) => $path->firstWhere('id', $topic->id)->is_completed === false
         );
     }
+
+    public function test_authenticated_users_can_view_a_topic(): void
+    {
+        $topic = EducationalTopic::create([
+            'title' => 'Ahorro',
+            'slug' => 'ahorro',
+            'description' => 'Cómo ahorrar',
+            'content' => 'Contenido del tema',
+            'category' => 'personal_finance',
+            'difficulty' => 'beginner',
+            'estimated_minutes' => 5,
+        ]);
+
+        $response = $this->actingAs(User::factory()->create())->get("/education/{$topic->id}");
+
+        $response->assertOk();
+        $response->assertSee('Ahorro');
+        $response->assertSee('Contenido del tema');
+        $response->assertViewHas('isCompleted', false);
+    }
+
+    public function test_marking_a_topic_completed_flashes_status_and_updates_the_pivot(): void
+    {
+        $topic = EducationalTopic::create([
+            'title' => 'Ahorro',
+            'slug' => 'ahorro',
+            'description' => 'Cómo ahorrar',
+            'content' => 'Contenido',
+            'category' => 'personal_finance',
+            'difficulty' => 'beginner',
+            'estimated_minutes' => 5,
+        ]);
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post("/education/{$topic->id}/complete");
+
+        $response->assertRedirect(route('education.show', $topic));
+        $response->assertSessionHas('status', 'Tema marcado como completado');
+        $this->assertDatabaseHas('educational_topic_user', [
+            'user_id' => $user->id,
+            'educational_topic_id' => $topic->id,
+        ]);
+    }
+
+    public function test_completing_a_topic_does_not_affect_other_users(): void
+    {
+        $topic = EducationalTopic::create([
+            'title' => 'Ahorro',
+            'slug' => 'ahorro',
+            'description' => 'Cómo ahorrar',
+            'content' => 'Contenido',
+            'category' => 'personal_finance',
+            'difficulty' => 'beginner',
+            'estimated_minutes' => 5,
+        ]);
+        $completer = User::factory()->create();
+        $bystander = User::factory()->create();
+
+        $this->actingAs($completer)->post("/education/{$topic->id}/complete");
+
+        $this->assertDatabaseMissing('educational_topic_user', [
+            'user_id' => $bystander->id,
+            'educational_topic_id' => $topic->id,
+        ]);
+    }
+
+    public function test_the_education_index_reports_progress_across_the_learning_path(): void
+    {
+        $topics = collect(range(1, 4))->map(fn (int $i) => EducationalTopic::create([
+            'title' => "Tema {$i}",
+            'slug' => "tema-{$i}",
+            'description' => 'Descripción',
+            'content' => 'Contenido',
+            'category' => 'basics',
+            'difficulty' => 'beginner',
+            'estimated_minutes' => 5,
+        ]));
+
+        $user = User::factory()->create();
+        $user->educationalTopics()->attach($topics->first(), ['completed_at' => now()]);
+
+        $response = $this->actingAs($user)->get('/education');
+
+        $response->assertOk();
+        $response->assertViewHas('progress', [
+            'total_topics' => 4,
+            'completed_topics' => 1,
+            'pending_topics' => 3,
+            'completion_percentage' => 25,
+        ]);
+        $response->assertSee('25%');
+    }
 }

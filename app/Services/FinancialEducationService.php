@@ -112,6 +112,18 @@ class FinancialEducationService
     }
 
     /**
+     * Única vía para marcar un tema completado -- la usan tanto la tool MCP
+     * `mark_topic_completed` como el botón "Marcar como completado" de
+     * education.show, para no duplicar la escritura en dos lugares.
+     */
+    public function markCompleted(User $user, EducationalTopic $topic): void
+    {
+        $user->educationalTopics()->syncWithoutDetaching([
+            $topic->id => ['completed_at' => now()],
+        ]);
+    }
+
+    /**
      * A2UI contract gap 11: `get_educational_topic` no traía esta señal, así
      * que el componente no podía ocultar «Marcar como completado» para un
      * tema que el usuario ya completó.

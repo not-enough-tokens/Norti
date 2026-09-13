@@ -1,4 +1,4 @@
 {{-- Feather (MIT) message-circle, stroke=currentColor para recolorear por instancia (nota de Figma). --}}
-<svg {{ $attributes->merge(['class' => 'size-full']) }} viewBox="0 0 18.5001 18.5001" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg {{ $attributes }} viewBox="0 0 18.5001 18.5001" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M17.5 8.79169C17.5032 10.0016 17.2205 11.1951 16.675 12.275C16.0283 13.5691 15.034 14.6576 13.8035 15.4185C12.5731 16.1795 11.1551 16.5828 9.70836 16.5834C8.49848 16.5865 7.30497 16.3038 6.22503 15.7584L1.00003 17.5L2.74169 12.275C2.19621 11.1951 1.91354 10.0016 1.91669 8.79169C1.91725 7.34497 2.32059 5.92697 3.08152 4.69653C3.84245 3.46609 4.93093 2.4718 6.22503 1.82503C7.30497 1.27955 8.49848 0.996872 9.70836 1.00003H10.1667C12.0773 1.10544 13.882 1.91189 15.2351 3.26498C16.5882 4.61807 17.3946 6.42271 17.5 8.33336V8.79169Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
 </svg>

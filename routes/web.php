@@ -54,6 +54,10 @@ Route::get('/education/{educationalTopic}', [EducationalTopicController::class, 
     ->middleware('auth')
     ->name('education.show');
 
+Route::post('/education/{educationalTopic}/complete', [EducationalTopicController::class, 'complete'])
+    ->middleware(['auth', 'throttle:30,1'])
+    ->name('education.complete');
+
 Route::post('/mcp/token', [McpTokenController::class, 'store'])
     ->middleware('auth')
     ->name('mcp.token.issue');
