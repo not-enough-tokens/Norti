@@ -160,12 +160,14 @@ Route::middleware(EnsureDebugRoutesAreAllowed::class)->group(function (): void {
 
         // Not url('/mcp/banorte'): inside a real HTTP request (unlike the
         // mcp:demo-agent CLI command) that helper resolves relative to the
-        // CURRENT request's host, so hitting this debug route makes the
-        // agent call back into the same single-threaded `php artisan serve`
-        // process that's already busy serving this request -- a self-deadlock
-        // that only times out after 30s. config('app.url') is a plain static
-        // read, immune to that.
-        $mcpUrl = rtrim((string) config('app.url'), '/').'/mcp/banorte';
+        // CURRENT request's host, which could differ from where /mcp/banorte
+        // actually lives. services.mcp.loopback_url (not app.url) so this can
+        // point at a second `php artisan serve` process in local dev --
+        // hitting the SAME single-threaded process that's already busy
+        // serving this request is a self-deadlock (see CLAUDE.md), and a
+        // different URL alone doesn't fix that if it still resolves to this
+        // same process/port.
+        $mcpUrl = rtrim((string) config('services.mcp.loopback_url'), '/').'/mcp/banorte';
         $client = Client::web($mcpUrl)->withToken($token)->connect();
 
         try {

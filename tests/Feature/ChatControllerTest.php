@@ -26,6 +26,7 @@ class ChatControllerTest extends TestCase
         $response->assertOk();
         $response->assertViewHas('messages', []);
         $response->assertSee('Hola, soy Norti', false);
+        $response->assertSee('aria-label="Navegación principal"', false);
     }
 
     public function test_guests_cannot_send_a_message(): void

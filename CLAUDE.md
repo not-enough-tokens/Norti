@@ -111,6 +111,23 @@ php artisan make:mcp-tool <Nombre>
 php artisan serve
 php artisan mcp:inspector /mcp/banorte
 
+# /chat (ChatController::send) llama a /mcp/banorte por HTTP dentro de la MISMA
+# request web -- un self-loopback. `php artisan serve` normal (php -S) atiende
+# una sola request a la vez y punto: la externa (POST /chat) nunca libera el
+# proceso para la interna (POST /mcp/banorte), que truena con "HTTP request
+# failed" y /chat cae al mensaje de error genérico. `PHP_CLI_SERVER_WORKERS`
+# NO arregla esto en Windows -- ese modo usa pcntl_fork(), que no existe ahí
+# (confirmado: dos requests concurrentes contra un `php -S` con
+# PHP_CLI_SERVER_WORKERS=4 en Windows se siguen sirviendo una tras otra). Los
+# comandos mcp:client-*/mcp:demo-agent NO tienen este problema: corren en su
+# propio proceso CLI y le pegan a `php artisan serve` desde AFUERA.
+#
+# Arreglo real: apuntar el loopback a un SEGUNDO proceso (mismo código, mismo
+# .env) vía `MCP_LOOPBACK_URL` -- dos procesos de un solo hilo cada uno no se
+# bloquean entre sí. La app sigue sirviéndose desde 8000 normalmente.
+php artisan serve --port=8001              # dedicado solo a /mcp/banorte
+MCP_LOOPBACK_URL=http://localhost:8001 php artisan serve   # sirve la app en 8000
+
 # M5 paso 1 (verificado): solo list_tools(), sin LLM ni agente
 php artisan mcp:client-tools
 
