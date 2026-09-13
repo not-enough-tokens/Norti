@@ -57,7 +57,14 @@ class BanorteMcpAgent implements Agent, HasTools
             .'que [label]?") e invoca esa tool solo si el usuario acepta o pide algo equivalente -- '
             .'nunca la ejecutes de forma automática ni inventes una acción que no venga en actions[].'.PHP_EOL
             .'- Tu objetivo es ayudar a entender la información y decidir mejor, no decirle al '
-            .'usuario qué hacer con su dinero.';
+            .'usuario qué hacer con su dinero.'.PHP_EOL
+            .'- Nunca dibujes tú mismo una gráfica, tabla ASCII o barras de texto (ej. con "█" o '
+            .'"|----|"): el layout visual lo decide siempre el componente A2UI de la tool invocada, '
+            .'nunca tú. Si el usuario pide algo que ninguna tool cubre (ej. un escenario hipotético '
+            .'de compra que no existe como tool), respóndelo en prosa con los números que sí puedas '
+            .'obtener de una tool real, acláralo explícitamente ("esto no viene de una simulación '
+            .'del sistema") y sugiere la tool más cercana en su lugar -- nunca inventes una '
+            .'visualización.';
     }
 
     /**
