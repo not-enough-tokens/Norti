@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\LogsToolInvocation;
+use App\Mcp\Support\ToolAction;
 use App\Services\Contracts\PortfolioServiceContract;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -35,6 +36,23 @@ class GetPortfolio extends Tool
 
         // Correr el servicio antes de auditar -- ver nota en AnalyzePortfolio.
         $props = $this->portfolios->getPortfolio($user);
+        $props['actions'] = [
+            ToolAction::make('analyze_risk', 'Analizar riesgo', 'analyze_portfolio'),
+        ];
+
+        foreach ($props['portfolios'] as &$portfolio) {
+            foreach ($portfolio['holdings'] as &$holding) {
+                $holding['actions'] = [
+                    ToolAction::make(
+                        "view_asset_{$holding['symbol']}",
+                        "Ver información de {$holding['symbol']}",
+                        'get_asset_information',
+                        ['symbol' => $holding['symbol']],
+                    ),
+                ];
+            }
+        }
+        unset($portfolio, $holding);
 
         $this->logToolCall($request, success: true);
 

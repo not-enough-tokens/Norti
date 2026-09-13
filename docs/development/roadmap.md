@@ -20,7 +20,7 @@ The milestones are designed to minimize coupling between components and allow in
 | M3 | MCP Server | How can external agents use it? | Completed |
 | M4 | External Market Data | Where does market data come from? | Completed |
 | M5 | AI / Agents | Who uses these capabilities? | Completed |
-| M6 | Financial Education | How does the system create user value? | In Progress |
+| M6 | Financial Education | How does the system create user value? | Completed |
 | M7 | Security & Hardening | How is the system protected? | Completed |
 | M8 | Product & Demo | How is the complete solution demonstrated? | Planned |
 
@@ -95,7 +95,7 @@ Implement the application's core business capabilities independently from MCP an
 ### Services
 
 - `ProfileService` (`FinancialProfileService`'s actual name) — `createOrUpdate()`, `monthlySavingsCapacity()`. Wrapped by `EloquentFinancialProfileService` (`app/Services/Financial/`) for the M3 contract, which buckets the savings rate into `low`/`moderate`/`high` instead of exposing exact income/expenses to the model by default.
-- `FinancialGoalService` — never built as a named class. `InvestmentSimulationService::projectForGoal()`/`evaluateGoal()` cover the same need (project a goal, detect if it's overdue, verify the goal and profile belong to the same user) and have test coverage, but **nothing in the app calls them** — no MCP tool, route, or view. [ADR 006](../decisions/006-get-financial-goals-tool.md) proposes a 7th, read-only MCP tool for this; pending a decision, since the 6-tool catalog was a closed decision and the new tool would touch exact amounts (see the sensitive-data policy in `CLAUDE.md`).
+- `FinancialGoalService` — never built as a named class. `InvestmentSimulationService::projectForGoal()`/`evaluateGoal()` cover the same need (project a goal, detect if it's overdue, verify the goal and profile belong to the same user) and have test coverage. [ADR 006](../decisions/006-get-financial-goals-tool.md) closed this gap: `FinancialGoalServiceAdapter` wraps both methods for the `get_financial_goals` MCP tool (M3), respecting the same summary/exact split as `get_financial_profile`.
 - `PortfolioService` — portfolio creation (`createForUser()`, allocates holdings per the user's risk profile) and aggregate stats (`totalInvested()`, `currentDistribution()`). Wrapped by `EloquentPortfolioService` for the M3 read model, which enriches holdings with live market prices — cash (`efectivo`) is valued at face value instead of queried from Twelve Data (it isn't a quotable instrument).
 - `RiskAnalysisService` — asset allocation and expected-return recommendations per risk profile. `risk_tolerance` is a free string column with no DB-level enum; callers must normalize it through `suggestRiskProfile()` rather than pass it raw, or an unrecognized value throws.
 - `InvestmentSimulationService` — month-by-month compound-interest projection (`project()`), plus the goal-projection methods above. Wrapped by `InvestmentSimulationServiceAdapter` for the M3 contract.
@@ -119,7 +119,7 @@ Core financial operations can be executed independently of MCP.
 
 ### Status
 
-**Completed** — except financial-goal exposure (see `FinancialGoalService` above and ADR 006), which is scoped as a follow-up, not a blocker.
+**Completed** — financial-goal exposure (see `FinancialGoalService` above and ADR 006) closed the last gap in this layer.
 
 ---
 
@@ -132,6 +132,7 @@ Expose selected application capabilities through the Model Context Protocol.
 ### Implemented Tools
 
 - `get_financial_profile`
+- `get_financial_goals` (ADR 006 -- added after the original 6, wraps M2's `InvestmentSimulationService::projectForGoal()`/`evaluateGoal()`)
 - `get_portfolio`
 - `analyze_portfolio`
 - `get_asset_information`
@@ -290,14 +291,14 @@ The system should not only provide financial information or analysis, but also h
 
 ### Capabilities
 
-- educational topics ✅ — `EducationalTopic` model, seeded content, `GET /education` and `GET /education/{educationalTopic}` (auth-protected, plain unstyled Blade views).
-- learning paths ⚠️ partial — `FinancialEducationService::getLearningPath()` returns every topic ordered by `id` with an `is_completed` flag; it's a fixed linear list, not an adaptive path.
-- educational progress ⚠️ partial — readable (`educational_topic_user.completed_at`, surfaced as `is_completed`) but **not writable anywhere in the app**: no route, controller action, or MCP tool sets `completed_at`. Current tests write it directly via `$user->educationalTopics()->attach($topic, ['completed_at' => now()])`, which isn't reachable from the actual product.
-- personalized topic recommendations ❌ — not implemented; recommendation today is "not yet completed", not based on the user's financial situation.
-- contextual explanations ❌ — `FinancialEducationIntegrationService::getFinancialContext()` (profile + goals + portfolios) exists but is **not called anywhere**. It used to be built and discarded unused on every `/education` load (three wasted queries, plus a `FinancialProfile` with exact amounts sitting in the Blade view's scope); that dead call was removed. The service itself was kept because connecting financial context to education is M6's actual objective, just not built yet.
-- identification of relevant knowledge gaps ❌ — not implemented.
+- educational topics ✅ — `EducationalTopic` model, seeded content, `GET /education` and `GET /education/{educationalTopic}` (auth-protected, plain unstyled Blade views), plus `get_educational_topic` over MCP.
+- learning paths ✅ — `FinancialEducationService::getLearningPath()` returns every topic ordered by `id` with an `is_completed` flag; still a fixed linear list, but `get_learning_path` now also surfaces a prioritized `recommended_topic` (see below) on top of it.
+- educational progress ✅ — readable (`educational_topic_user.completed_at`, surfaced as `is_completed`, also via `get_learning_progress`) and now **writable** through the `mark_topic_completed` MCP tool (requires the `mcp:write` scope, granted by every real token-issuing path: `/mcp/token` and the three M5 demo commands).
+- personalized topic recommendations ✅ — `FinancialEducationService::getRecommendedTopic()` connects `FinancialEducationIntegrationService::getFinancialContext()` (profile + goals + portfolios; previously dead code) to a small rule set, evaluated in order against the user's *incomplete* topics: no `FinancialGoal` records → "Ahorro vs inversión"; portfolio concentrated in a single asset → "Diversificación"; conservative `risk_tolerance` (normalized via `RiskAnalysisService::suggestRiskProfile()`, never the raw column) while holding stocks → "Riesgo de inversión"; otherwise the first incomplete topic. Rule-based, not ML -- deliberately simple given the 5-topic seeded catalog. Exposed only through `get_learning_path`'s `recommended_topic` field; no Blade/A2UI surface yet.
+- contextual explanations ✅ — `getRecommendedTopic()` tags the chosen topic with `recommended_reason` (`no_goals`, `concentrated_portfolio`, `conservative_profile_with_stocks`, or `default`), returned in `get_learning_path`. The backend only supplies this machine-readable signal, never a pre-written sentence -- narrating it in natural language is deliberately left to the LLM/agent layer, matching the deterministic/generative split already documented in `docs/architecture/system-architecture.md` and ADR 004.
+- identification of relevant knowledge gaps ✅ (simple) — `FinancialEducationService::getCategoryGaps()` reports which topic categories the user has zero completed topics in, exposed via `get_learning_progress`'s `category_gaps`. Deliberately simple: groups the existing catalog by `category` and checks for zero completions, not a general algorithm. The 3 recommendation rules above are still hand-picked heuristics tied to specific topics by slug, not category-driven — left as-is, out of scope for this pass.
 
-A separate, unmerged branch (`feature/education-mcp`) adds four MCP tools (`get_educational_topic`, `get_learning_path`, `get_learning_progress`, `mark_topic_completed`) that would close the progress-writing gap and expose this milestone through MCP like the other five milestones — evaluate merging it (after rebasing onto current `master`) before treating M6 as blocked on new work.
+The four MCP tools (`get_educational_topic`, `get_learning_path`, `get_learning_progress`, `mark_topic_completed`, from `feature/education-mcp`) and the recommendation engine above are all merged into `master`.
 
 ### Example Flow
 
@@ -325,7 +326,7 @@ The prototype demonstrates a clear connection between financial intelligence and
 
 ### Status
 
-**In Progress** — topics, a basic learning path, and auth-protected views exist; the financial-intelligence connection and progress-writing are not built yet (see Capabilities above).
+**Completed** — topics, learning path, progress (read/write), financial-context recommendations with a machine-readable reason, and simple category-gap detection are all built, tested, and exposed over MCP (see Capabilities above). Deliberately left out of this milestone: refactoring the 3 recommendation rules from slug-based to category-based, a Blade/A2UI surface for a human using the app directly (MCP-only so far -- there's no A2UI rendering infrastructure anywhere in the project yet, for any milestone), and wiring onboarding to redirect into education.
 
 ---
 
@@ -428,7 +429,7 @@ A coherent end-to-end prototype suitable for the hackathon presentation.
 
 ### Status
 
-**Planned**
+**Planned** on the product/UI side -- still waiting on the Figma A2UI component library and the site's frontend architecture (home, auth, chat). Backend-side demo prep already exists and isn't blocked by that: `database/seeders/DemoSeeder.php` (a demo user with profile, a diversified portfolio, deliberately no goals, and partial education progress) and `docs/development/demo-script.md` (10 example questions mapped to all 10 MCP tools, following the Demo Requirements above).
 
 ---
 

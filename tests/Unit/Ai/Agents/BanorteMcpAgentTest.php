@@ -23,6 +23,49 @@ class BanorteMcpAgentTest extends TestCase
         $this->assertStringContainsString('Banorte', (string) $agent->instructions());
     }
 
+    /**
+     * Regresión: un merge anterior mergeó las 4 tools de educación y
+     * recommended_reason/category_gaps sin que las instructions() del agente
+     * se enteraran -- el agente no sabía que debía usarlas ni cómo narrar
+     * recommended_reason. Este test evita que se repita en silencio.
+     */
+    public function test_instructions_mention_the_education_tools_and_how_to_narrate_recommendations(): void
+    {
+        $instructions = (string) (new BanorteMcpAgent(Mockery::mock(Client::class)))->instructions();
+
+        $this->assertStringContainsString('get_educational_topic', $instructions);
+        $this->assertStringContainsString('get_learning_path', $instructions);
+        $this->assertStringContainsString('get_learning_progress', $instructions);
+        $this->assertStringContainsString('mark_topic_completed', $instructions);
+        $this->assertStringContainsString('recommended_reason', $instructions);
+        $this->assertStringContainsString('category_gaps', $instructions);
+    }
+
+    /**
+     * Mismo tipo de regresión que arriba, esta vez para get_financial_goals
+     * (ADR 006, PR #30): el follow-up quedó pendiente porque tocaba el mismo
+     * archivo que el PR de las tools de educación, todavía abierto entonces.
+     */
+    public function test_instructions_mention_get_financial_goals_and_its_summary_default(): void
+    {
+        $instructions = (string) (new BanorteMcpAgent(Mockery::mock(Client::class)))->instructions();
+
+        $this->assertStringContainsString('get_financial_goals', $instructions);
+        $this->assertStringContainsString('detail=summary', $instructions);
+    }
+
+    /**
+     * A2UI contract gap 1 (props.actions[]): sin esta instrucción, el agente
+     * no sabía que existía ese campo ni que debía ofrecerlo como sugerencia
+     * en vez de ejecutarlo por su cuenta.
+     */
+    public function test_instructions_explain_how_to_offer_actions(): void
+    {
+        $instructions = (string) (new BanorteMcpAgent(Mockery::mock(Client::class)))->instructions();
+
+        $this->assertStringContainsString('actions[]', $instructions);
+    }
+
     public function test_tools_spreads_the_mcp_clients_tools(): void
     {
         $client = Mockery::mock(Client::class);

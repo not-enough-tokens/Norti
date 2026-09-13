@@ -38,6 +38,22 @@ class GetMarketSnapshotToolTest extends TestCase
             ->assertStructuredContent(fn ($json) => $json->where('component', 'market_snapshot_grid')
                 ->where('props.quotes.AAPL.close', '150.00')
                 ->has('props.quotes.INVALID.error')
+                ->where('props.quotes.AAPL.actions', [
+                    [
+                        'id' => 'view_asset_AAPL',
+                        'label' => 'Ver información de AAPL',
+                        'tool' => 'get_asset_information',
+                        'params' => ['symbol' => 'AAPL'],
+                    ],
+                ])
+                ->where('props.quotes.INVALID.actions', [
+                    [
+                        'id' => 'retry_INVALID',
+                        'label' => 'Reintentar',
+                        'tool' => 'get_market_snapshot',
+                        'params' => ['symbols' => ['INVALID']],
+                    ],
+                ])
                 ->etc());
     }
 

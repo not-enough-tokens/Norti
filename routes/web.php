@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\EducationalTopicController;
 use App\Http\Controllers\McpTokenController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Middleware\EnsureDebugRoutesAreAllowed;
 use App\Models\Asset;
 use App\Models\AuditLog;
 use App\Models\FinancialProfile;
@@ -52,7 +53,7 @@ Route::post('/mcp/token', [McpTokenController::class, 'store'])
     ->middleware('auth')
     ->name('mcp.token.issue');
 
-if (app()->environment(['local', 'testing'])) {
+Route::middleware(EnsureDebugRoutesAreAllowed::class)->group(function (): void {
     Route::get('/mcp-test', fn () => view('debug.mcp-tester'))->name('mcp.debug-tester');
 
     Route::get('/mcp-test/seed', function () {
@@ -92,7 +93,7 @@ if (app()->environment(['local', 'testing'])) {
             );
         }
 
-        $token = $user->createToken('mcp-test-debug', ['mcp:read', 'mcp:simulate'])->accessToken;
+        $token = $user->createToken('mcp-test-debug', ['mcp:read', 'mcp:simulate', 'mcp:write'])->accessToken;
 
         return response()->json([
             'token' => $token,
@@ -103,4 +104,4 @@ if (app()->environment(['local', 'testing'])) {
 
     Route::get('/mcp-test/audit-logs', fn () => AuditLog::latest()->limit(50)->get())
         ->name('mcp.debug-audit-logs');
-}
+});

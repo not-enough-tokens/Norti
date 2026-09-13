@@ -25,6 +25,33 @@ class SimulateInvestmentToolTest extends TestCase
             'risk_profile' => 'moderate',
         ])
             ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('component', 'simulation_result_card')
+                ->where('props.initial_amount', 1000)
+                ->where('props.months', 12)
+                ->where('props.risk_profile', 'moderate')
+                ->where('props.assumed_annual_rate', 0.09)
+                ->where('props.projected_value', 1093.81)
+                ->where('props.projected_gain', 93.81)
+                ->where('props.disclaimer', 'Proyección aritmética simplificada (interés compuesto mensual a tasa fija). No considera volatilidad de mercado ni constituye asesoría financiera.')
+                ->etc());
+    }
+
+    /**
+     * Option Chip (plazo) y Option Row (perfil) del contrato A2UI: el plazo y
+     * el perfil actuales nunca se repiten como acción -- ya son el resultado
+     * que se está mostrando.
+     */
+    public function test_offers_resimulate_actions_excluding_the_current_term_and_profile(): void
+    {
+        $user = User::factory()->create();
+        Passport::actingAs($user, ['mcp:simulate']);
+
+        BanorteServer::tool(SimulateInvestment::class, [
+            'amount' => 1000,
+            'months' => 12,
+            'risk_profile' => 'moderate',
+        ])
+            ->assertOk()
             ->assertStructuredContent([
                 'component' => 'simulation_result_card',
                 'props' => [
@@ -35,6 +62,32 @@ class SimulateInvestmentToolTest extends TestCase
                     'projected_value' => 1093.81,
                     'projected_gain' => 93.81,
                     'disclaimer' => 'Proyección aritmética simplificada (interés compuesto mensual a tasa fija). No considera volatilidad de mercado ni constituye asesoría financiera.',
+                    'actions' => [
+                        [
+                            'id' => 'resimulate_36_months',
+                            'label' => 'Simular a 36 meses',
+                            'tool' => 'simulate_investment',
+                            'params' => ['amount' => 1000.0, 'months' => 36, 'risk_profile' => 'moderate'],
+                        ],
+                        [
+                            'id' => 'resimulate_60_months',
+                            'label' => 'Simular a 60 meses',
+                            'tool' => 'simulate_investment',
+                            'params' => ['amount' => 1000.0, 'months' => 60, 'risk_profile' => 'moderate'],
+                        ],
+                        [
+                            'id' => 'resimulate_conservative',
+                            'label' => 'Perfil conservador',
+                            'tool' => 'simulate_investment',
+                            'params' => ['amount' => 1000.0, 'months' => 12, 'risk_profile' => 'conservative'],
+                        ],
+                        [
+                            'id' => 'resimulate_aggressive',
+                            'label' => 'Perfil agresivo',
+                            'tool' => 'simulate_investment',
+                            'params' => ['amount' => 1000.0, 'months' => 12, 'risk_profile' => 'aggressive'],
+                        ],
+                    ],
                 ],
             ]);
     }

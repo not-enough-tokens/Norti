@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\LogsToolInvocation;
+use App\Mcp\Support\ToolAction;
 use App\Models\EducationalTopic;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -40,6 +41,13 @@ class GetEducationalTopic extends Tool
         ]);
 
         $topic = EducationalTopic::find($validated['topic_id']);
+
+        // Sin is_completed en esta tool todavía (brecha 11, próximo PR), así
+        // que "Marcar como completado" se ofrece siempre -- volverla
+        // condicional le toca a ese fix.
+        $topic->actions = [
+            ToolAction::make('mark_completed', 'Marcar como completado', 'mark_topic_completed', ['topic_id' => $topic->id]),
+        ];
 
         $this->logToolCall(
             $request,

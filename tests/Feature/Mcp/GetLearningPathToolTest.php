@@ -44,10 +44,28 @@ class GetLearningPathToolTest extends TestCase
         BanorteServer::tool(GetLearningPath::class)
             ->assertOk()
             ->assertStructuredContent(fn ($json) => $json->where('component', 'learning_path')
-                ->where('props.0.id', $completed->id)
-                ->where('props.0.is_completed', true)
-                ->where('props.1.id', $pending->id)
-                ->where('props.1.is_completed', false)
+                ->where('props.topics.0.id', $completed->id)
+                ->where('props.topics.0.is_completed', true)
+                ->where('props.topics.1.id', $pending->id)
+                ->where('props.topics.1.is_completed', false)
+                ->where('props.recommended_topic.id', $pending->id)
+                ->where('props.recommended_topic.recommended_reason', 'default')
+                ->where('props.topics.0.actions', [
+                    [
+                        'id' => "view_topic_{$completed->id}",
+                        'label' => 'Ver tema',
+                        'tool' => 'get_educational_topic',
+                        'params' => ['topic_id' => $completed->id],
+                    ],
+                ])
+                ->where('props.actions', [
+                    [
+                        'id' => 'view_progress',
+                        'label' => 'Ver mi progreso',
+                        'tool' => 'get_learning_progress',
+                        'params' => [],
+                    ],
+                ])
                 ->etc());
     }
 
@@ -71,7 +89,7 @@ class GetLearningPathToolTest extends TestCase
 
         BanorteServer::tool(GetLearningPath::class)
             ->assertOk()
-            ->assertStructuredContent(fn ($json) => $json->where('props.0.is_completed', false)->etc());
+            ->assertStructuredContent(fn ($json) => $json->where('props.topics.0.is_completed', false)->etc());
     }
 
     public function test_rejects_without_the_mcp_read_scope(): void
