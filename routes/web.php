@@ -4,6 +4,7 @@ use App\Ai\Agents\BanorteMcpAgent;
 use App\Ai\ToolInvocationCollector;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\EducationalTopicController;
 use App\Http\Controllers\McpTokenController;
 use App\Http\Controllers\OnboardingController;
@@ -60,6 +61,16 @@ Route::get('/education/{educationalTopic}', [EducationalTopicController::class, 
 Route::post('/mcp/token', [McpTokenController::class, 'store'])
     ->middleware('auth')
     ->name('mcp.token.issue');
+
+// Chat real (M5 + A2UI): a diferencia de /onboarding (preguntas fijas, sin
+// LLM), cada turno aquí invoca a BanorteMcpAgent contra las 11 tools reales.
+Route::get('/chat', [ChatController::class, 'index'])
+    ->middleware('auth')
+    ->name('chat.index');
+
+Route::post('/chat', [ChatController::class, 'send'])
+    ->middleware(['auth', 'throttle:20,1'])
+    ->name('chat.send');
 
 Route::middleware(EnsureDebugRoutesAreAllowed::class)->group(function (): void {
     Route::get('/mcp-test', fn () => view('debug.mcp-tester'))->name('mcp.debug-tester');

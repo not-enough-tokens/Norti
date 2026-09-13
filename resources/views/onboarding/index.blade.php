@@ -25,8 +25,9 @@
             @endif
 
             @if ($isDone)
-                <div class="grid gap-3 sm:grid-cols-2">
-                    <x-button :href="route('education.index')" class="w-full">Continuar</x-button>
+                <div class="grid gap-3 sm:grid-cols-3">
+                    <x-button :href="route('chat.index')" class="w-full">Hablar con Norti</x-button>
+                    <x-button :href="route('education.index')" variant="secondary" class="w-full">Ver educación</x-button>
 
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf

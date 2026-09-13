@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,15 +17,25 @@ class McpTokenController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
-        $user = $request->user();
+        return response()->json($this->issue($request->user()));
+    }
 
+    /**
+     * Extraído de store() para que otros puntos de entrada server-side (ver
+     * ChatController) puedan emitir el mismo token sin un round-trip HTTP a
+     * esta misma ruta.
+     *
+     * @return array{token: string, expires_at: ?Carbon}
+     */
+    public function issue(User $user): array
+    {
         $user->tokens()->where('name', 'mcp-session')->delete();
 
         $token = $user->createToken('mcp-session', ['mcp:read', 'mcp:simulate', 'mcp:write']);
 
-        return response()->json([
+        return [
             'token' => $token->accessToken,
             'expires_at' => $token->token->expires_at,
-        ]);
+        ];
     }
 }
