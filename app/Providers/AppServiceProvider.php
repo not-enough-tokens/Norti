@@ -2,11 +2,15 @@
 
 namespace App\Providers;
 
+use App\Ai\Listeners\CaptureStructuredToolResults;
+use App\Ai\ToolInvocationCollector;
 use App\Services\TwelveData\TwelveDataClient;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Ai\Events\ToolInvoked;
 use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
@@ -20,6 +24,11 @@ class AppServiceProvider extends ServiceProvider
             apiKey: (string) config('services.twelvedata.key'),
             baseUrl: (string) config('services.twelvedata.base_url'),
         ));
+
+        // Prototype for A2UI-in-chat (docs/architecture/a2ui-components.md):
+        // shared per-request so a controller can read back every structured
+        // tool result the agent triggered during one prompt() call.
+        $this->app->singleton(ToolInvocationCollector::class);
     }
 
     /**
@@ -35,6 +44,8 @@ class AppServiceProvider extends ServiceProvider
 
         Passport::tokensExpireIn(now()->addDay());
         Passport::personalAccessTokensExpireIn(now()->addDay());
+
+        Event::listen(ToolInvoked::class, CaptureStructuredToolResults::class);
 
         RateLimiter::for('mcp', fn (Request $request): Limit => Limit::perMinute(
             (int) config('mcp.rate_limit_per_minute')
