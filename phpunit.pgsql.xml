@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
     Same suite as phpunit.xml, but against a real PostgreSQL connection
-    instead of sqlite -- used by CI (.github/workflows/ci.yml) to exercise
+    instead of sqlite: used by CI (.github/workflows/ci.yml) to exercise
     Postgres-only behavior (e.g. the jsonb column on audit_logs) that sqlite
     silently degrades. Not meant for everyday local runs.
 -->
