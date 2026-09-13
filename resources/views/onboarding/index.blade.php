@@ -33,6 +33,12 @@
                         <x-button :href="route('chat.index')" class="w-full">Hablar con Norti</x-button>
                         <x-button :href="route('education.index')" variant="secondary" class="w-full">Ver educación</x-button>
                     </div>
+                @elseif ($step === 'risk')
+                    <div class="flex flex-wrap gap-3">
+                        @foreach ($riskOptions as $value => $label)
+                            <x-chip :action="route('onboarding.chat')" :value="$value" :label="$label" />
+                        @endforeach
+                    </div>
                 @else
                     <form method="POST" action="{{ route('onboarding.chat') }}">
                         @csrf

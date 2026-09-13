@@ -5,6 +5,7 @@ namespace App\Mcp\Tools;
 use App\Mcp\Concerns\LogsToolInvocation;
 use App\Mcp\Support\ToolAction;
 use App\Models\EducationalTopic;
+use App\Services\FinancialEducationService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
 use Laravel\Mcp\Request;
@@ -20,6 +21,8 @@ class MarkTopicCompleted extends Tool
 {
     use LogsToolInvocation;
 
+    public function __construct(private readonly FinancialEducationService $education) {}
+
     public function handle(Request $request): Response|ResponseFactory
     {
         $user = $request->user();
@@ -34,11 +37,7 @@ class MarkTopicCompleted extends Tool
 
         $topic = EducationalTopic::find($validated['topic_id']);
 
-        $user->educationalTopics()->syncWithoutDetaching([
-            $topic->id => [
-                'completed_at' => now(),
-            ],
-        ]);
+        $this->education->markCompleted($user, $topic);
 
         $this->logToolCall(
             $request,

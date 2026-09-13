@@ -51,6 +51,23 @@ class AuthenticationTest extends TestCase
         $response->assertSessionHas('status', 'Sesión iniciada de forma correcta');
     }
 
+    /**
+     * El correo se guarda en minúsculas (RegisteredUserController); el login
+     * debe encontrar la cuenta sin importar cómo se haya tecleado el correo.
+     */
+    public function test_login_is_case_insensitive_for_the_email(): void
+    {
+        $user = User::factory()->create(['email' => 'ana@example.com']);
+
+        $response = $this->post('/login', [
+            'email' => 'Ana@Example.com',
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticatedAs($user);
+        $response->assertRedirect(route('onboarding.index'));
+    }
+
     public function test_users_cannot_authenticate_with_invalid_password(): void
     {
         $user = User::factory()->create();
