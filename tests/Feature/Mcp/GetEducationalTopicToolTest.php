@@ -31,17 +31,55 @@ class GetEducationalTopicToolTest extends TestCase
 
         BanorteServer::tool(GetEducationalTopic::class, ['topic_id' => $topic->id])
             ->assertOk()
-            ->assertStructuredContent(fn ($json) => $json->where('component', 'educational_topic')
-                ->where('props.id', $topic->id)
-                ->where('props.title', 'Ahorro')
-                ->where('props.actions', [
-                    [
-                        'id' => 'mark_completed',
-                        'label' => 'Marcar como completado',
-                        'tool' => 'mark_topic_completed',
-                        'params' => ['topic_id' => $topic->id],
+            ->assertStructuredContent([
+                'component' => 'educational_topic',
+                'props' => [
+                    'id' => $topic->id,
+                    'title' => 'Ahorro',
+                    'slug' => 'ahorro',
+                    'description' => 'Cómo ahorrar',
+                    'content' => 'Contenido de ahorro',
+                    'category' => 'personal_finance',
+                    'difficulty' => 'beginner',
+                    'estimated_minutes' => 5,
+                    'is_completed' => false,
+                    'actions' => [
+                        [
+                            'id' => 'mark_completed',
+                            'label' => 'Marcar como completado',
+                            'tool' => 'mark_topic_completed',
+                            'params' => ['topic_id' => $topic->id],
+                        ],
                     ],
-                ])
+                ],
+            ]);
+    }
+
+    /**
+     * Gap 11: sin is_completed, "Marcar como completado" se ofrecía incluso
+     * para un tema que el usuario ya completó.
+     */
+    public function test_omits_the_mark_completed_action_when_already_completed(): void
+    {
+        $topic = EducationalTopic::create([
+            'title' => 'Ahorro',
+            'slug' => 'ahorro',
+            'description' => 'Cómo ahorrar',
+            'content' => 'Contenido de ahorro',
+            'category' => 'personal_finance',
+            'difficulty' => 'beginner',
+            'estimated_minutes' => 5,
+        ]);
+
+        $user = User::factory()->create();
+        $user->educationalTopics()->attach($topic, ['completed_at' => now()]);
+
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(GetEducationalTopic::class, ['topic_id' => $topic->id])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.is_completed', true)
+                ->where('props.actions', [])
                 ->etc());
     }
 

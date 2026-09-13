@@ -210,4 +210,38 @@ class FinancialEducationServiceTest extends TestCase
 
         $this->assertSame([], $gaps);
     }
+
+    public function test_progress_summary_reports_counts_and_percentage(): void
+    {
+        $this->seedTopics();
+
+        $user = User::factory()->create();
+        $user->educationalTopics()->attach(
+            EducationalTopic::where('slug', 'ahorro-vs-inversion')->sole(),
+            ['completed_at' => now()]
+        );
+
+        $summary = app(FinancialEducationService::class)->getProgressSummary($user);
+
+        $this->assertSame([
+            'total_topics' => 4,
+            'completed_topics' => 1,
+            'pending_topics' => 3,
+            'completion_percentage' => 25,
+        ], $summary);
+    }
+
+    public function test_progress_summary_reports_zero_percent_with_no_topics(): void
+    {
+        $user = User::factory()->create();
+
+        $summary = app(FinancialEducationService::class)->getProgressSummary($user);
+
+        $this->assertSame([
+            'total_topics' => 0,
+            'completed_topics' => 0,
+            'pending_topics' => 0,
+            'completion_percentage' => 0,
+        ], $summary);
+    }
 }

@@ -27,30 +27,29 @@ class GetLearningPath extends Tool
         $user = $request->user();
 
         if (! $user?->tokenCan('mcp:read')) {
-            $this->logToolCall(
-                $request,
-                success: false,
-                resultSummary: 'scope_denied'
-            );
-
-            return Response::error(
-                'No autorizado: se requiere el scope mcp:read.'
-            );
+            return $this->errorResponse($request, 'scope_denied', 'No autorizado: se requiere el scope mcp:read.');
         }
 
-        $learningPath = $this->education->getLearningPath($user);
         $recommendedTopic = $this->education->getRecommendedTopic($user);
 
-        $learningPath->each(function ($topic): void {
-            $topic->actions = [
+        // Gap 10: antes era el arreglo crudo de modelos Eloquent (con
+        // content y timestamps que esta lista nunca usa). Recortado a lo que
+        // el contrato de Figma pide para una Topic Row.
+        $topics = $this->education->getLearningPath($user)->map(fn ($topic) => [
+            'id' => $topic->id,
+            'title' => $topic->title,
+            'category' => $topic->category,
+            'estimated_minutes' => $topic->estimated_minutes,
+            'is_completed' => $topic->is_completed,
+            'actions' => [
                 ToolAction::make(
                     "view_topic_{$topic->id}",
                     'Ver tema',
                     'get_educational_topic',
                     ['topic_id' => $topic->id],
                 ),
-            ];
-        });
+            ],
+        ])->all();
 
         $this->logToolCall(
             $request,
@@ -60,8 +59,12 @@ class GetLearningPath extends Tool
         return Response::structured([
             'component' => 'learning_path',
             'props' => [
-                'topics' => $learningPath,
-                'recommended_topic' => $recommendedTopic,
+                'topics' => $topics,
+                'recommended_topic' => $recommendedTopic ? [
+                    'id' => $recommendedTopic->id,
+                    'title' => $recommendedTopic->title,
+                    'recommended_reason' => $recommendedTopic->recommended_reason,
+                ] : null,
                 'actions' => [
                     ToolAction::make('view_progress', 'Ver mi progreso', 'get_learning_progress'),
                 ],
