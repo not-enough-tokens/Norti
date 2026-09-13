@@ -30,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
         Passport::tokensCan([
             'mcp:read' => 'Leer datos financieros del usuario',
             'mcp:simulate' => 'Ejecutar simulaciones de inversión',
+	    'mcp:write' => 'Modificar el progreso educativo del usuario',
         ]);
 
         Passport::tokensExpireIn(now()->addDay());

@@ -4,9 +4,13 @@ namespace App\Mcp\Servers;
 
 use App\Mcp\Tools\AnalyzePortfolio;
 use App\Mcp\Tools\GetAssetInformation;
+use App\Mcp\Tools\GetEducationalTopic;
 use App\Mcp\Tools\GetFinancialProfile;
+use App\Mcp\Tools\GetLearningPath;
+use App\Mcp\Tools\GetLearningProgress;
 use App\Mcp\Tools\GetMarketSnapshot;
 use App\Mcp\Tools\GetPortfolio;
+use App\Mcp\Tools\MarkTopicCompleted;
 use App\Mcp\Tools\SimulateInvestment;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
@@ -25,6 +29,10 @@ class BanorteServer extends Server
         GetAssetInformation::class,
         GetMarketSnapshot::class,
         SimulateInvestment::class,
+        GetEducationalTopic::class,
+        GetLearningPath::class,
+        GetLearningProgress::class,
+        MarkTopicCompleted::class,
     ];
 
     protected array $resources = [

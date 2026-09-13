@@ -3,9 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\EducationalTopic;
+<<<<<<< HEAD
 use App\Services\FinancialEducationIntegrationService;
 use App\Services\FinancialEducationService;
 use Illuminate\Http\Request;
+=======
+use App\Models\User;
+use App\Services\FinancialEducationIntegrationService;
+use App\Services\FinancialEducationService;
+>>>>>>> feature/education-mcp
 
 class EducationalTopicController extends Controller
 {
@@ -14,7 +20,11 @@ class EducationalTopicController extends Controller
         FinancialEducationService $service,
         FinancialEducationIntegrationService $integrationService
     ) {
+<<<<<<< HEAD
         $user = $request->user();
+=======
+        $user = User::first();
+>>>>>>> feature/education-mcp
 
         $learningPath = $service->getLearningPath($user);
 
