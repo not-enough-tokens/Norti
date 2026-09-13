@@ -15,6 +15,7 @@ Documentación complementaria de arquitectura/decisiones (agregada por Integrant
 - PHP 8.4 (compatible con `^8.3` declarado en `composer.json`), Laravel 13.
 - PostgreSQL alojado en **Supabase** — mismo connection string para dev y producción (dominio `.tech` ya adquirido para el deploy).
 - `laravel/mcp` (^0.9.5) como paquete oficial de MCP, transporte principal **Streamable HTTP** (no STDIO — el MCP Inspector en Windows rompe rutas con backslash en modo STDIO).
+- `laravel/ai` (^0.11) como SDK del agente de IA (M5) — agnóstico de proveedor por diseño, ver ADR 005. Default OpenAI vía `config/ai.php`; Anthropic y otros quedan disponibles como override sin tocar código.
 - Auth: **Laravel Sanctum** (sesión web del humano) + **Laravel Passport** (OAuth para el agente de IA contra el MCP server).
 - Frontend: **Blade + Vite** — monolito de un solo dominio, sin lógica financiera en la vista. Tailwind 4.
 - Proveedor de datos de mercado real: **twelvedata.com** (M4, en curso, dueño Integrante C) — detrás de una interfaz, nunca acoplado directo.
@@ -102,8 +103,9 @@ php artisan mcp:client-tools
 # M5 paso 2 (verificado, con la API real de Twelve Data): call_tool() manual
 php artisan mcp:client-call get_market_snapshot --arguments='{"symbols":["AAPL"]}'
 
-# M5 paso 3: agente real (Claude) descubriendo e invocando las 6 tools -- requiere
-# `php artisan serve` corriendo y ANTHROPIC_API_KEY en .env
+# M5 paso 3 (verificado hasta la llamada real al proveedor): agente real vía Laravel
+# AI SDK, decoupled del proveedor (default OpenAI) -- requiere `php artisan serve`
+# corriendo y OPENAI_API_KEY en .env; --provider=anthropic --model=... para cambiar
 php artisan mcp:demo-agent "¿Cuál es la cotización de AAPL?"
 ```
 
@@ -120,7 +122,7 @@ Tests: usar los helpers de `Laravel\Mcp\Server\Testing\*` para cubrir — cada t
 - M2 Financial Services (Integrante A) — ✅ integrado: `RiskAnalysisServiceAdapter`/`InvestmentSimulationServiceAdapter` (`app/Services/Financial/`) envuelven el `RiskAnalysisService`/`InvestmentSimulationService` reales; ya no hay placeholders
 - **M3 MCP Server — BanorteServer + Tools (Felix / Integrante B)** ✅ las 6 tools implementadas, registradas y probadas
 - M4 External Data — MarketDataProvider Mock→Real (Integrante C, twelvedata.com) — ✅ completo: la abstracción paralela `MarketDataProvider`/`TwelveDataProvider` que Integrante C tenía en desarrollo se retiró; su normalización de `getHistoricalPrices()`/`getAssetProfile()` (antes stub en ambos lados) se trasplantó a `TwelveDataMarketDataProvider::timeSeries()`, que es ahora el único proveedor de market data (`quote()`/`profile()` pasan el payload de Twelve Data casi sin tocar; `timeSeries()` normaliza a barras tipadas). `MockMarketDataProvider` (`app/Services/MarketData/`) implementa el mismo `MarketDataProviderContract` para tests deterministas. Pendiente: no se ha probado nada contra la Supabase real, solo sqlite local/CI
-- M5 AI/Agents (Integrante C) — ⚠️ en progreso, construido como vertical slice: (1) `php artisan mcp:client-tools` ✅ verificado end-to-end — cliente MCP puro (`Laravel\Mcp\Client`, sin SDK de IA) que se autentica con Passport y hace `list_tools()`, sin LLM ni agente; (2) `php artisan mcp:client-call <tool> --arguments=<json>` ✅ verificado end-to-end contra la API real de Twelve Data (`get_market_snapshot` con AAPL) — la llamada atraviesa sin cambios `MCP Tool → MarketDataProviderContract → TwelveDataMarketDataProvider → TwelveDataClient → Twelve Data`; (3) `php artisan mcp:demo-agent` ya construido (agente real de Claude, Anthropic Messages API + tool use, ciclo tool-call/tool-result hasta respuesta final), siguiente paso a verificar. Todos requieren `php artisan serve` corriendo (hacen HTTP real, no usan el kernel de test). Pendiente: UI de chat / integración con el frontend Blade.
+- M5 AI/Agents (Integrante C) — ⚠️ en progreso, construido como vertical slice: (1) `php artisan mcp:client-tools` ✅ verificado end-to-end — cliente MCP puro (`Laravel\Mcp\Client`, sin SDK de IA) que se autentica con Passport y hace `list_tools()`, sin LLM ni agente; (2) `php artisan mcp:client-call <tool> --arguments=<json>` ✅ verificado end-to-end contra la API real de Twelve Data (`get_market_snapshot` con AAPL) — la llamada atraviesa sin cambios `MCP Tool → MarketDataProviderContract → TwelveDataMarketDataProvider → TwelveDataClient → Twelve Data`; (3) `php artisan mcp:demo-agent` ✅ reescrito sobre **Laravel AI SDK** (`laravel/ai`, ver ADR 005) — `App\Ai\Agents\BanorteMcpAgent` (`Agent`+`HasTools`) consume el cliente MCP directamente, sin código específico de proveedor; default OpenAI vía `#[Provider(Lab::OpenAI)]`, override con `--provider`/`--model`. Verificado hasta la llamada real a `api.openai.com` (falla solo por falta de key real). La implementación anterior (HTTP manual a Anthropic) fue retirada por acoplar el agente a un proveedor específico. Todos requieren `php artisan serve` corriendo (hacen HTTP real, no usan el kernel de test). Pendiente: UI de chat / integración con el frontend Blade.
 - M6 Financial Education (Integrante D)
 - **M7 Security & Hardening (Felix / Integrante B)** ✅ audit log + rate limiting activos
 - M8 Product & Demonstration (Integrante D)
