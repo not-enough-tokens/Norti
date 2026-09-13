@@ -33,9 +33,9 @@ class SimulateInvestment extends Tool
             return Response::error('No autorizado: se requiere el scope mcp:simulate.');
         }
 
-        $validated = $request->validate([
+        $validated = $this->validateOrLog($request, [
             'amount' => ['required', 'numeric', 'gt:0'],
-            'months' => ['required', 'integer', 'min:1'],
+            'months' => ['required', 'integer', 'min:1', 'max:600'],
             'risk_profile' => ['required', 'string', 'in:conservative,moderate,aggressive'],
         ]);
 
@@ -69,7 +69,7 @@ class SimulateInvestment extends Tool
                 ->required(),
             'months' => $schema->integer()
                 ->min(1)
-                ->description('Plazo de la simulación, en meses.')
+                ->description('Plazo de la simulación, en meses (máximo 600, 50 años).')
                 ->required(),
             'risk_profile' => $schema->string()
                 ->enum(['conservative', 'moderate', 'aggressive'])

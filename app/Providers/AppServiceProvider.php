@@ -36,8 +36,11 @@ class AppServiceProvider extends ServiceProvider
             'mcp:simulate' => 'Ejecutar simulaciones de inversión',
         ]);
 
-        RateLimiter::for('mcp', fn (Request $request): Limit => Limit::perMinute(60)->by(
-            $request->user()?->id ?: $request->ip()
-        ));
+        Passport::tokensExpireIn(now()->addDay());
+        Passport::personalAccessTokensExpireIn(now()->addDay());
+
+        RateLimiter::for('mcp', fn (Request $request): Limit => Limit::perMinute(
+            (int) config('mcp.rate_limit_per_minute')
+        )->by($request->user()?->id ?: $request->ip()));
     }
 }
