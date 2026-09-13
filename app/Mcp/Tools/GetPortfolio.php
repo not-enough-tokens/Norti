@@ -33,11 +33,14 @@ class GetPortfolio extends Tool
             return Response::error('No autorizado: se requiere el scope mcp:read.');
         }
 
+        // Correr el servicio antes de auditar -- ver nota en AnalyzePortfolio.
+        $props = $this->portfolios->getPortfolio($user);
+
         $this->logToolCall($request, success: true);
 
         return Response::structured([
             'component' => 'portfolio_summary',
-            'props' => $this->portfolios->getPortfolio($user),
+            'props' => $props,
         ]);
     }
 

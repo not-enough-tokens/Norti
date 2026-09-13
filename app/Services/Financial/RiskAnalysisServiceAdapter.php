@@ -13,20 +13,9 @@ use App\Services\RiskAnalysisService;
  * how to recommend an allocation for a risk profile, not analyze existing
  * holdings) but the recommended target allocation and risk-profile suggestion
  * now come from the real service instead of a placeholder.
- *
- * NOTE: RiskAnalysisService::assetAllocation() returns English keys
- * (bond/fund/stock) while Asset::asset_type uses Spanish (accion/bono/fondo/
- * efectivo) -- ASSET_TYPE_TRANSLATIONS below bridges that until the team
- * unifies the vocabulary.
  */
 class RiskAnalysisServiceAdapter implements RiskAnalysisServiceContract
 {
-    private const ASSET_TYPE_TRANSLATIONS = [
-        'bond' => 'bono',
-        'fund' => 'fondo',
-        'stock' => 'accion',
-    ];
-
     public function __construct(
         private readonly PortfolioServiceContract $portfolios,
         private readonly RiskAnalysisService $riskAnalysis,
@@ -98,13 +87,7 @@ class RiskAnalysisServiceAdapter implements RiskAnalysisServiceContract
         }
 
         $riskTolerance = $this->riskAnalysis->suggestRiskProfile($profile);
-        $allocation = $this->riskAnalysis->assetAllocation($riskTolerance);
 
-        $translated = [];
-        foreach ($allocation as $type => $percentage) {
-            $translated[self::ASSET_TYPE_TRANSLATIONS[$type] ?? $type] = $percentage;
-        }
-
-        return [$riskTolerance, $translated];
+        return [$riskTolerance, $this->riskAnalysis->assetAllocation($riskTolerance)];
     }
 }

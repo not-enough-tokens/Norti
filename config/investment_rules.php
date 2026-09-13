@@ -16,20 +16,25 @@ return [
 
     // Distribución sugerida (%) por tipo de activo, según perfil de riesgo.
     // Los valores de cada perfil deben sumar 100.
+    //
+    // Las llaves usan el mismo vocabulario que la columna `assets.asset_type`
+    // (accion/bono/fondo/efectivo). Antes estaban en inglés (bond/fund/stock) y
+    // había que traducirlas en cada consumidor -- PortfolioService::createForUser()
+    // no traducía y por eso nunca encontraba un Asset que empatara.
     'asset_allocation' => [
         'conservative' => [
-            'bond' => 80,
-            'fund' => 20,
+            'bono' => 80,
+            'fondo' => 20,
         ],
         'moderate' => [
-            'bond' => 50,
-            'fund' => 30,
-            'stock' => 20,
+            'bono' => 50,
+            'fondo' => 30,
+            'accion' => 20,
         ],
         'aggressive' => [
-            'bond' => 10,
-            'fund' => 30,
-            'stock' => 60,
+            'bono' => 10,
+            'fondo' => 30,
+            'accion' => 60,
         ],
     ],
 

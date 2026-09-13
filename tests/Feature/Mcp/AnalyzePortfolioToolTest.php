@@ -9,10 +9,12 @@ use App\Models\FinancialProfile;
 use App\Models\Holding;
 use App\Models\Portfolio;
 use App\Models\User;
+use App\Services\Contracts\RiskAnalysisServiceContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Laravel\Passport\Passport;
+use RuntimeException;
 use Tests\TestCase;
 
 class AnalyzePortfolioToolTest extends TestCase
@@ -90,8 +92,7 @@ class AnalyzePortfolioToolTest extends TestCase
 
         Passport::actingAs($user, ['mcp:read']);
 
-        // RiskAnalysisService::assetAllocation('moderate') = ['bond'=>50,'fund'=>30,'stock'=>20],
-        // translated to Spanish asset_type keys: bono/fondo/accion.
+        // RiskAnalysisService::assetAllocation('moderate') = ['bono'=>50,'fondo'=>30,'accion'=>20].
         BanorteServer::tool(AnalyzePortfolio::class, [])
             ->assertOk()
             ->assertStructuredContent(fn ($json) => $json->where('props.risk_tolerance', 'moderate')
@@ -99,6 +100,52 @@ class AnalyzePortfolioToolTest extends TestCase
                 ->where('props.recommended_allocation_by_asset_type.bono', 50)
                 ->where('props.recommended_allocation_by_asset_type.fondo', 30)
                 ->etc());
+    }
+
+    /**
+     * risk_tolerance es un string libre en la BD (sin enum ni check), así que
+     * un valor que no esté en investment_rules.risk_levels es alcanzable --
+     * antes hacía que la tool devolviera un error con la excepción interna.
+     */
+    public function test_survives_an_unrecognized_risk_tolerance_in_the_database(): void
+    {
+        $user = User::factory()->create();
+        FinancialProfile::factory()->for($user)->create([
+            'risk_tolerance' => 'Moderate',
+            'investment_horizon_months' => 12,
+        ]);
+
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(AnalyzePortfolio::class, [])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.risk_tolerance', 'moderate')->etc());
+    }
+
+    /**
+     * logToolCall(success: true) corría antes que el servicio (la llamada
+     * vivía dentro del argumento de Response::structured()), así que una
+     * excepción del servicio dejaba un audit log diciendo 'ok'.
+     */
+    public function test_does_not_audit_a_success_when_the_service_throws(): void
+    {
+        $user = User::factory()->create();
+        Passport::actingAs($user, ['mcp:read']);
+
+        $this->app->bind(RiskAnalysisServiceContract::class, fn () => new class implements RiskAnalysisServiceContract
+        {
+            public function analyze(User $user): array
+            {
+                throw new RuntimeException('boom');
+            }
+        });
+
+        BanorteServer::tool(AnalyzePortfolio::class, []);
+
+        $this->assertDatabaseMissing('audit_logs', [
+            'tool_name' => 'analyze_portfolio',
+            'result_summary' => 'ok',
+        ]);
     }
 
     public function test_rejects_without_the_mcp_read_scope(): void
