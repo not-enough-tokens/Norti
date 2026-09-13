@@ -21,7 +21,7 @@ The milestones are designed to minimize coupling between components and allow in
 | M4 | External Market Data | Where does market data come from? | Completed |
 | M5 | AI / Agents | Who uses these capabilities? | Completed |
 | M6 | Financial Education | How does the system create user value? | In Progress |
-| M7 | Security & Hardening | How is the system protected? | Planned |
+| M7 | Security & Hardening | How is the system protected? | Completed |
 | M8 | Product & Demo | How is the complete solution demonstrated? | Planned |
 
 Milestone statuses are expected to change throughout development.
@@ -205,7 +205,7 @@ MCP tools and `MarketDataController` can request market data through the interna
 
 ### Status
 
-**Completed**
+**Completed.** Not yet exercised against the real Supabase Postgres database — only sqlite locally and in CI.
 
 ---
 
@@ -276,7 +276,7 @@ All three steps of the vertical slice are now verified end-to-end against real s
 
 ### Status
 
-**Completed**
+**Completed** and merged into `master`.
 
 ---
 
@@ -371,7 +371,7 @@ The prototype has clear and demonstrable security boundaries appropriate for the
 
 ### Status
 
-**Planned**
+**Completed.** Audit logging (`audit_logs` table, logged per MCP tool call) and rate limiting (`throttle:mcp`, `throttle:market-data`) are active. Gap: rate limiting is verified at the config/unit level but lacks an HTTP-level test confirming `throttle:mcp` actually returns 429.
 
 ---
 
