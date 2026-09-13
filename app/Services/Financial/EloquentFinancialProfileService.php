@@ -2,6 +2,7 @@
 
 namespace App\Services\Financial;
 
+use App\Mcp\Support\ChartData;
 use App\Models\FinancialProfile;
 use App\Models\User;
 use App\Services\Contracts\FinancialProfileServiceContract;
@@ -30,18 +31,26 @@ class EloquentFinancialProfileService implements FinancialProfileServiceContract
         $riskTolerance = $this->riskAnalysis->suggestRiskProfile($profile);
 
         if ($detail === 'exact') {
+            $monthlyIncome = (float) $profile->monthly_income;
+            $monthlyExpenses = (float) $profile->monthly_expenses;
+            $savingsCapacity = $this->profileService->monthlySavingsCapacity($profile);
+
             return [
                 'has_profile' => true,
                 'detail' => 'exact',
-                'monthly_income' => (float) $profile->monthly_income,
-                'monthly_expenses' => (float) $profile->monthly_expenses,
+                'monthly_income' => $monthlyIncome,
+                'monthly_expenses' => $monthlyExpenses,
                 'savings' => (float) $profile->savings,
                 // Gap 18: antes ausente en detail=exact aunque ProfileService
                 // ya la calculaba -- el resumen se queda en categorías, este
                 // monto exacto solo se expone cuando el usuario pidió exact.
-                'monthly_savings_capacity' => $this->profileService->monthlySavingsCapacity($profile),
+                'monthly_savings_capacity' => $savingsCapacity,
                 'risk_tolerance' => $riskTolerance,
                 'investment_horizon_months' => $profile->investment_horizon_months,
+                // Cascada ingresos -> gastos -> capacidad de ahorro (A2UI
+                // contract gap 13, aplicada a financial_profile_card). Solo
+                // aparece en detail=exact, igual que los montos que grafica.
+                'chart' => $this->savingsWaterfallChart($monthlyIncome, $monthlyExpenses, $savingsCapacity),
             ];
         }
 
@@ -52,6 +61,23 @@ class EloquentFinancialProfileService implements FinancialProfileServiceContract
             'investment_horizon_months' => $profile->investment_horizon_months,
             'savings_rate_category' => $this->savingsRateCategory($profile),
         ];
+    }
+
+    private function savingsWaterfallChart(float $monthlyIncome, float $monthlyExpenses, float $savingsCapacity): array
+    {
+        $yMax = max(1.0, $monthlyIncome);
+
+        return ChartData::make(
+            type: 'waterfall',
+            data: [
+                ['key' => 'monthly_income', 'kind' => 'total', 'value' => $monthlyIncome, 'start' => 0, 'end' => $monthlyIncome],
+                ['key' => 'monthly_expenses', 'kind' => 'decrease', 'value' => -$monthlyExpenses, 'start' => $monthlyIncome, 'end' => $monthlyIncome - $monthlyExpenses],
+                ['key' => 'monthly_savings_capacity', 'kind' => 'total', 'value' => $savingsCapacity, 'start' => 0, 'end' => $savingsCapacity],
+            ],
+            unit: 'currency',
+            currency: 'MXN',
+            yAxis: ['domain' => [0, $yMax], 'ticks' => [0, round($yMax / 2, 2), $yMax]],
+        );
     }
 
     /**
