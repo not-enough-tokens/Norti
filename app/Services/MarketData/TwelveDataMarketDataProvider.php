@@ -6,21 +6,28 @@ use App\Services\Contracts\Exceptions\MarketDataUnavailableException;
 use App\Services\Contracts\MarketDataProviderContract;
 use App\Services\TwelveData\Exceptions\TwelveDataException;
 use App\Services\TwelveData\TwelveDataClient;
+use Illuminate\Support\Facades\Cache;
 
 class TwelveDataMarketDataProvider implements MarketDataProviderContract
 {
+    /**
+     * TwelveData's free tier caps at 8 requests/minute -- this cache keeps
+     * repeated agent calls for the same symbol from burning that quota.
+     */
+    private const CACHE_TTL_SECONDS = 60;
+
     public function __construct(
         private readonly TwelveDataClient $client,
     ) {}
 
     public function quote(string $symbol, array $parameters = []): array
     {
-        return $this->call(fn (): array => $this->client->quote($symbol, $parameters));
+        return $this->cached('quote', $symbol, $parameters, fn (): array => $this->call(fn (): array => $this->client->quote($symbol, $parameters)));
     }
 
     public function profile(string $symbol, array $parameters = []): array
     {
-        return $this->call(fn (): array => $this->client->profile($symbol, $parameters));
+        return $this->cached('profile', $symbol, $parameters, fn (): array => $this->call(fn (): array => $this->client->profile($symbol, $parameters)));
     }
 
     /**
@@ -54,5 +61,27 @@ class TwelveDataMarketDataProvider implements MarketDataProviderContract
         } catch (TwelveDataException $exception) {
             throw new MarketDataUnavailableException($exception->getMessage(), previous: $exception);
         }
+    }
+
+    /**
+     * Bypassed during tests: tests use Http::fake() with a different response
+     * per test, and a real cache store would leak a stale fake response from
+     * one test into the next.
+     *
+     * @param  array<string, mixed>  $parameters
+     * @param  callable(): array<string, mixed>  $callback
+     * @return array<string, mixed>
+     */
+    private function cached(string $method, string $symbol, array $parameters, callable $callback): array
+    {
+        if (app()->runningUnitTests()) {
+            return $callback();
+        }
+
+        $cacheKey = $parameters === []
+            ? "twelvedata:{$method}:{$symbol}"
+            : "twelvedata:{$method}:{$symbol}:".md5(serialize($parameters));
+
+        return Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, $callback);
     }
 }

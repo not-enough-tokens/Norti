@@ -33,7 +33,7 @@ class GetFinancialProfile extends Tool
             return Response::error('No autorizado: se requiere el scope mcp:read.');
         }
 
-        $validated = $request->validate([
+        $validated = $this->validateOrLog($request, [
             'detail' => ['sometimes', 'string', 'in:summary,exact'],
         ]);
 

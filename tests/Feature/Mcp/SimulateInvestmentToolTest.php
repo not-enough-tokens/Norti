@@ -67,6 +67,36 @@ class SimulateInvestmentToolTest extends TestCase
         ])->assertHasErrors();
     }
 
+    public function test_audits_a_validation_failure(): void
+    {
+        $user = User::factory()->create();
+        Passport::actingAs($user, ['mcp:simulate']);
+
+        BanorteServer::tool(SimulateInvestment::class, [
+            'amount' => 1000,
+            'months' => 12,
+            'risk_profile' => 'yolo',
+        ])->assertHasErrors();
+
+        $log = AuditLog::where('tool_name', 'simulate_investment')
+            ->where('result_summary', 'validation_failed')
+            ->firstOrFail();
+
+        $this->assertSame(['risk_profile'], $log->input['failed_fields']);
+    }
+
+    public function test_rejects_months_over_the_50_year_cap(): void
+    {
+        $user = User::factory()->create();
+        Passport::actingAs($user, ['mcp:simulate']);
+
+        BanorteServer::tool(SimulateInvestment::class, [
+            'amount' => 1000,
+            'months' => 601,
+            'risk_profile' => 'moderate',
+        ])->assertHasErrors();
+    }
+
     public function test_rejects_without_the_mcp_simulate_scope(): void
     {
         $user = User::factory()->create();

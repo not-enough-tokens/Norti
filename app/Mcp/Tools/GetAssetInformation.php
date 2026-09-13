@@ -35,8 +35,8 @@ class GetAssetInformation extends Tool
             return Response::error('No autorizado: se requiere el scope mcp:read.');
         }
 
-        $validated = $request->validate([
-            'symbol' => ['required', 'string'],
+        $validated = $this->validateOrLog($request, [
+            'symbol' => ['required', 'string', 'regex:/^[A-Za-z0-9.\-]{1,15}$/'],
         ]);
 
         $symbol = $validated['symbol'];
