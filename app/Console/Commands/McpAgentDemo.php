@@ -50,7 +50,7 @@ class McpAgentDemo extends Command
         $question = $this->argument('question')
             ?? '¿Cuál es la cotización actual de AAPL y qué tan riesgoso es mi portafolio?';
 
-        $token = $user->createToken('mcp-agent-demo', ['mcp:read', 'mcp:simulate'])->accessToken;
+        $token = $user->createToken('mcp-agent-demo', ['mcp:read', 'mcp:simulate', 'mcp:write'])->accessToken;
         $mcpUrl = url('/mcp/banorte');
 
         $this->info("Usuario: {$user->email}");

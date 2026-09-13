@@ -19,7 +19,7 @@ class McpTokenController extends Controller
 
         $user->tokens()->where('name', 'mcp-session')->delete();
 
-        $token = $user->createToken('mcp-session', ['mcp:read', 'mcp:simulate']);
+        $token = $user->createToken('mcp-session', ['mcp:read', 'mcp:simulate', 'mcp:write']);
 
         return response()->json([
             'token' => $token->accessToken,
