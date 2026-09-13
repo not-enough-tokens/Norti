@@ -60,7 +60,7 @@ class McpClientCallTool extends Command
         }
 
         $tool = $this->argument('tool');
-        $token = $user->createToken('mcp-client-demo', ['mcp:read', 'mcp:simulate'])->accessToken;
+        $token = $user->createToken('mcp-client-demo', ['mcp:read', 'mcp:simulate', 'mcp:write'])->accessToken;
         $mcpUrl = url('/mcp/banorte');
 
         $this->info("Conectando a {$mcpUrl} como {$user->email}...");

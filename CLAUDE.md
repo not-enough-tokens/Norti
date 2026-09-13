@@ -62,7 +62,7 @@ MVP mínimo demostrable si el tiempo se reduce: `get_financial_profile`, `get_po
 
 - **Humano ↔ app Blade:** sesión estándar de Laravel (login, cookie, CSRF). Sin tokens — no es SPA. Implementado en `app/Http/Controllers/Auth/` (`AuthenticatedSessionController`, `RegisteredUserController`) + rutas `login`/`register`/`logout` en `routes/web.php`, sin paquete externo (Breeze/Fortify) para no agregar una dependencia innecesaria.
 - **Flujo post-login/registro:** ambos redirigen a `route('onboarding.index')` (`OnboardingController`), nunca directo a `/education`. Hoy `onboarding.index` es un placeholder (`resources/views/onboarding/index.blade.php`) con un link a continuar — el flujo real de onboarding (preguntas para detectar la intención del usuario: aprender, invertir, dar seguimiento a una meta) se construye después, en este mismo punto de entrada, sin tocar el flujo de auth de nuevo.
-- **Agente de IA ↔ MCP server:** Laravel Passport. Se emite un Personal Access Token atado al usuario autenticado en el momento en que inicia la conversación (`$user->createToken('mcp-session', ['mcp:read', 'mcp:simulate'])->accessToken`), nunca un token genérico de la app. Ruta MCP protegida con middleware `auth:api`.
+- **Agente de IA ↔ MCP server:** Laravel Passport. Se emite un Personal Access Token atado al usuario autenticado en el momento en que inicia la conversación (`$user->createToken('mcp-session', ['mcp:read', 'mcp:simulate', 'mcp:write'])->accessToken`), nunca un token genérico de la app. Ruta MCP protegida con middleware `auth:api`.
 - **Scopes:** `mcp:read` (4 read-only + get_market_snapshot), `mcp:simulate` (simulate_investment). Cada tool valida su propio scope con `tokenCan()` dentro de `handle()` antes de ejecutar lógica.
 - **Rate limiting:** `RateLimiter::for('mcp', ...)` por usuario/IP, aplicado como `throttle:mcp` en la ruta de `routes/ai.php`.
 - **`/api/market-data/*`:** protegidas con `auth:api` (Passport, el mismo guard que el MCP server, porque son rutas stateless) + `throttle:market-data`, cuyo límite sale de `services.twelvedata.rate_limit_per_minute` (default 8, el techo del plan gratuito). Estaban completamente abiertas: sin auth cualquiera podía agotar la cuota de TwelveData y tumbar el market data de toda la app. Ojo: el techo real de TwelveData es **por cuenta**, no por usuario, así que este throttle limita a cada cliente pero no garantiza el techo global.
@@ -151,7 +151,7 @@ php artisan tinker
 ```
 ```php
 $user = App\Models\User::first(); // o crear uno con User::factory()->create()
-$token = $user->createToken('mcp-session', ['mcp:read', 'mcp:simulate'])->accessToken;
+$token = $user->createToken('mcp-session', ['mcp:read', 'mcp:simulate', 'mcp:write'])->accessToken;
 ```
 
 Luego, con `php artisan serve` corriendo, un POST JSON-RPC a `/mcp/banorte` con `Authorization: Bearer <token>` (primero `initialize`, después `tools/call` con el `Mcp-Session-Id` que regresa el header de la respuesta de `initialize`) — o usar `php artisan mcp:inspector /mcp/banorte` para una UI interactiva. En tests, usar `Laravel\Passport\Passport::actingAs($user, ['mcp:read'])` + `BanorteServer::tool(NombreTool::class, [...])->assertOk()` (ver `tests/Feature/Mcp/*Test.php` para el patrón).

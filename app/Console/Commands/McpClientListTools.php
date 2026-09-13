@@ -38,7 +38,7 @@ class McpClientListTools extends Command
             return self::FAILURE;
         }
 
-        $token = $user->createToken('mcp-client-demo', ['mcp:read', 'mcp:simulate'])->accessToken;
+        $token = $user->createToken('mcp-client-demo', ['mcp:read', 'mcp:simulate', 'mcp:write'])->accessToken;
 
         $mcpUrl = url('/mcp/banorte');
 

@@ -24,7 +24,7 @@ class McpTokenControllerTest extends TestCase
         ]);
     }
 
-    public function test_issues_a_token_with_both_scopes_for_the_logged_in_user(): void
+    public function test_issues_a_token_with_all_scopes_for_the_logged_in_user(): void
     {
         $user = User::factory()->create();
 
@@ -33,7 +33,7 @@ class McpTokenControllerTest extends TestCase
         $response->assertOk()->assertJsonStructure(['token', 'expires_at']);
 
         $token = $user->tokens()->where('name', 'mcp-session')->sole();
-        $this->assertEqualsCanonicalizing(['mcp:read', 'mcp:simulate'], $token->scopes);
+        $this->assertEqualsCanonicalizing(['mcp:read', 'mcp:simulate', 'mcp:write'], $token->scopes);
     }
 
     public function test_revokes_the_previous_mcp_session_token(): void
