@@ -14,19 +14,20 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        // `/` -> /login -> onboarding (el `guest` middleware de /login hace el
-        // segundo salto, ver bootstrap/app.php).
-        $response = $this->actingAs($user)->followingRedirects()->get('/');
+        $response = $this->actingAs($user)->get('/');
 
-        $response->assertOk();
-        $response->assertViewIs('onboarding.index');
+        $response->assertRedirect(route('onboarding.index'));
     }
 
-    public function test_root_url_sends_a_guest_to_login(): void
+    public function test_root_url_shows_the_landing_page_to_guests(): void
     {
         $response = $this->get('/');
 
-        $response->assertRedirect(route('login'));
+        $response->assertOk();
+        $response->assertViewIs('home');
+        $response->assertSee('Norti');
+        $response->assertSee(route('login'), false);
+        $response->assertSee(route('register'), false);
     }
 
     public function test_login_screen_can_be_rendered(): void

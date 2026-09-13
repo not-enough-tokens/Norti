@@ -8,12 +8,12 @@ use Tests\TestCase;
 class ExampleTest extends TestCase
 {
     /**
-     * `/` no tiene pantalla propia: siempre manda a /login (ver routes/web.php).
+     * `/` es la landing pública (marca + CTAs a login/registro), ver routes/web.php.
      */
-    public function test_the_root_url_redirects_to_login(): void
+    public function test_the_application_returns_a_successful_response(): void
     {
         $response = $this->get('/');
 
-        $response->assertRedirect(route('login'));
+        $response->assertStatus(200);
     }
 }

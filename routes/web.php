@@ -14,9 +14,10 @@ use App\Models\Portfolio;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
-// Sin pantalla propia: manda siempre a /login, que a su vez redirige a
-// onboarding si ya hay sesión (redirectUsersTo en bootstrap/app.php).
-Route::get('/', fn () => redirect()->route('login'));
+// Landing pública (marca + CTAs a login/registro). Quien ya tiene sesión no
+// necesita verla -- lo mandamos directo a onboarding.
+Route::get('/', fn () => auth()->check() ? redirect()->route('onboarding.index') : view('home'))
+    ->name('home');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
