@@ -32,7 +32,17 @@ Se usan variables sueltas en vez de pegar el `postgresql://...` completo en `DB_
 
 ## Passport, por entorno
 
-Cada entorno (local, staging, Supabase de producción) necesita correr su propio `php artisan passport:install` (o al menos `php artisan passport:keys`) -- las llaves de encriptación (`storage/oauth-*.key`) y el cliente personal-access viven en esa base de datos específica, no se comparten vía git ni entre entornos.
+Cada entorno (local, staging, Supabase de producción) necesita su propio cliente personal-access -- vive en esa base de datos específica, no se comparte vía git ni entre entornos.
+
+**No usar `php artisan passport:install` en este proyecto**: como las migrations de OAuth ya están publicadas y versionadas (`database/migrations/2026_09_12_1929*_create_oauth_*_table.php`), `passport:install` las vuelve a publicar con un timestamp nuevo y falla con `relation already exists` al intentar correrlas. Además, si ya existen `storage/oauth-*.key`, pide `--force` para no tocarlas.
+
+En su lugar, por entorno nuevo:
+
+```bash
+php artisan migrate                                      # crea las tablas si no existen (usa las migrations ya versionadas)
+php artisan passport:keys                                # solo si storage/oauth-*.key no existen todavía
+php artisan passport:client --personal --name="..."      # crea el cliente personal-access que createToken() necesita
+```
 
 ## Verificar la conexión
 

@@ -205,7 +205,7 @@ MCP tools and `MarketDataController` can request market data through the interna
 
 ### Status
 
-**Completed.** Not yet exercised against the real Supabase Postgres database — only sqlite locally and in CI.
+**Completed.** Verified against the real Supabase Postgres database (2026-09-13): `migrate` runs clean, Passport issues tokens (required creating the personal-access client with `passport:client --personal`; `passport:install` republishes duplicate OAuth migrations if the project already has its own, so avoid it), and `audit_logs.input` is confirmed real `jsonb`. Connected via the Transaction pooler (port 6543) rather than the Session pooler (5432) recommended in `docs/deployment/supabase-setup.md` — worked for this check, but watch for "prepared statement already exists" errors under concurrency. The test suite itself was not run against this database (it uses `RefreshDatabase`, which would wipe the real data already there).
 
 ---
 
