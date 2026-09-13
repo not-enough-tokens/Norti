@@ -95,6 +95,10 @@ php artisan make:mcp-tool <Nombre>
 # Testing manual del server (Streamable HTTP — NO usar STDIO en Windows)
 php artisan serve
 php artisan mcp:inspector /mcp/banorte
+
+# M5: agente real (Claude) descubriendo e invocando las 6 tools -- requiere
+# `php artisan serve` corriendo y ANTHROPIC_API_KEY en .env
+php artisan mcp:demo-agent "¿Cuál es la cotización de AAPL?"
 ```
 
 Tests: usar los helpers de `Laravel\Mcp\Server\Testing\*` para cubrir — cada tool responde con el schema esperado dado un input válido; cada tool rechaza si el token no tiene el scope requerido; `get_financial_profile` regresa `summary` por defecto y `exact` solo con `detail: "exact"`.
@@ -110,7 +114,7 @@ Tests: usar los helpers de `Laravel\Mcp\Server\Testing\*` para cubrir — cada t
 - M2 Financial Services (Integrante A) — ✅ integrado: `RiskAnalysisServiceAdapter`/`InvestmentSimulationServiceAdapter` (`app/Services/Financial/`) envuelven el `RiskAnalysisService`/`InvestmentSimulationService` reales; ya no hay placeholders
 - **M3 MCP Server — BanorteServer + Tools (Felix / Integrante B)** ✅ las 6 tools implementadas, registradas y probadas
 - M4 External Data — MarketDataProvider Mock→Real (Integrante C, twelvedata.com) — ✅ completo: la abstracción paralela `MarketDataProvider`/`TwelveDataProvider` que Integrante C tenía en desarrollo se retiró; su normalización de `getHistoricalPrices()`/`getAssetProfile()` (antes stub en ambos lados) se trasplantó a `TwelveDataMarketDataProvider::timeSeries()`, que es ahora el único proveedor de market data (`quote()`/`profile()` pasan el payload de Twelve Data casi sin tocar; `timeSeries()` normaliza a barras tipadas). `MockMarketDataProvider` (`app/Services/MarketData/`) implementa el mismo `MarketDataProviderContract` para tests deterministas. Pendiente: no se ha probado nada contra la Supabase real, solo sqlite local/CI
-- M5 AI/Agents (Integrante C)
+- M5 AI/Agents (Integrante C) — ⚠️ en progreso: `php artisan mcp:demo-agent` conecta un agente real de Claude (Anthropic Messages API + tool use) al `/mcp/banorte` vía `Laravel\Mcp\Client` con un Personal Access Token de Passport, demuestra descubrimiento de las 6 tools y el ciclo tool-call/tool-result hasta la respuesta final. Requiere `php artisan serve` corriendo (hace HTTP real, no usa el kernel de test) y `ANTHROPIC_API_KEY`. Pendiente: UI de chat / integración con el frontend Blade (fuera de este comando de demo).
 - M6 Financial Education (Integrante D)
 - **M7 Security & Hardening (Felix / Integrante B)** ✅ audit log + rate limiting activos
 - M8 Product & Demonstration (Integrante D)

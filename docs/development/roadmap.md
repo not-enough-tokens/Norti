@@ -19,7 +19,7 @@ The milestones are designed to minimize coupling between components and allow in
 | M2 | Financial Services | What can the system do? | In Progress |
 | M3 | MCP Server | How can external agents use it? | Completed |
 | M4 | External Market Data | Where does market data come from? | Completed |
-| M5 | AI / Agents | Who uses these capabilities? | Planned |
+| M5 | AI / Agents | Who uses these capabilities? | In Progress |
 | M6 | Financial Education | How does the system create user value? | Planned |
 | M7 | Security & Hardening | How is the system protected? | Planned |
 | M8 | Product & Demo | How is the complete solution demonstrated? | Planned |
@@ -258,9 +258,13 @@ The backend remains responsible for:
 
 A user can interact naturally with the AI agent while the agent accesses controlled financial capabilities through MCP.
 
+### Demonstration
+
+`php artisan mcp:demo-agent "<pregunta>"` runs this exact flow end-to-end with a real Claude agent: it issues a Passport token, connects to `/mcp/banorte` as an MCP client (`Laravel\Mcp\Client`), lists the discovered tools, sends the question to Claude with those tools attached, and loops tool-call ⇄ tool-result turns until Claude gives a final answer. Requires `php artisan serve` running and `ANTHROPIC_API_KEY` set.
+
 ### Status
 
-**Planned**
+**In Progress**
 
 ---
 
