@@ -31,9 +31,7 @@ class GetMarketSnapshot extends Tool
         $user = $request->user();
 
         if (! $user?->tokenCan('mcp:read')) {
-            $this->logToolCall($request, success: false, resultSummary: 'scope_denied');
-
-            return Response::error('No autorizado: se requiere el scope mcp:read.');
+            return $this->errorResponse($request, 'scope_denied', 'No autorizado: se requiere el scope mcp:read.');
         }
 
         $validated = $this->validateOrLog($request, [

@@ -43,30 +43,56 @@ class GetLearningPathToolTest extends TestCase
 
         BanorteServer::tool(GetLearningPath::class)
             ->assertOk()
-            ->assertStructuredContent(fn ($json) => $json->where('component', 'learning_path')
-                ->where('props.topics.0.id', $completed->id)
-                ->where('props.topics.0.is_completed', true)
-                ->where('props.topics.1.id', $pending->id)
-                ->where('props.topics.1.is_completed', false)
-                ->where('props.recommended_topic.id', $pending->id)
-                ->where('props.recommended_topic.recommended_reason', 'default')
-                ->where('props.topics.0.actions', [
-                    [
-                        'id' => "view_topic_{$completed->id}",
-                        'label' => 'Ver tema',
-                        'tool' => 'get_educational_topic',
-                        'params' => ['topic_id' => $completed->id],
+            ->assertStructuredContent([
+                'component' => 'learning_path',
+                'props' => [
+                    'topics' => [
+                        [
+                            'id' => $completed->id,
+                            'title' => 'Ahorro',
+                            'category' => 'personal_finance',
+                            'estimated_minutes' => 5,
+                            'is_completed' => true,
+                            'actions' => [
+                                [
+                                    'id' => "view_topic_{$completed->id}",
+                                    'label' => 'Ver tema',
+                                    'tool' => 'get_educational_topic',
+                                    'params' => ['topic_id' => $completed->id],
+                                ],
+                            ],
+                        ],
+                        [
+                            'id' => $pending->id,
+                            'title' => 'Inversión',
+                            'category' => 'investing',
+                            'estimated_minutes' => 10,
+                            'is_completed' => false,
+                            'actions' => [
+                                [
+                                    'id' => "view_topic_{$pending->id}",
+                                    'label' => 'Ver tema',
+                                    'tool' => 'get_educational_topic',
+                                    'params' => ['topic_id' => $pending->id],
+                                ],
+                            ],
+                        ],
                     ],
-                ])
-                ->where('props.actions', [
-                    [
-                        'id' => 'view_progress',
-                        'label' => 'Ver mi progreso',
-                        'tool' => 'get_learning_progress',
-                        'params' => [],
+                    'recommended_topic' => [
+                        'id' => $pending->id,
+                        'title' => 'Inversión',
+                        'recommended_reason' => 'default',
                     ],
-                ])
-                ->etc());
+                    'actions' => [
+                        [
+                            'id' => 'view_progress',
+                            'label' => 'Ver mi progreso',
+                            'tool' => 'get_learning_progress',
+                            'params' => [],
+                        ],
+                    ],
+                ],
+            ]);
     }
 
     public function test_progress_is_scoped_to_the_authenticated_user(): void

@@ -4,9 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\LogsToolInvocation;
 use App\Mcp\Support\ToolAction;
-use App\Models\User;
 use App\Services\Contracts\FinancialProfileServiceContract;
-use App\Services\RiskAnalysisService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
 use Laravel\Mcp\Request;
@@ -24,7 +22,6 @@ class GetFinancialProfile extends Tool
 
     public function __construct(
         private readonly FinancialProfileServiceContract $profiles,
-        private readonly RiskAnalysisService $riskAnalysis,
     ) {}
 
     public function handle(Request $request): Response|ResponseFactory
@@ -32,9 +29,7 @@ class GetFinancialProfile extends Tool
         $user = $request->user();
 
         if (! $user?->tokenCan('mcp:read')) {
-            $this->logToolCall($request, success: false, resultSummary: 'scope_denied');
-
-            return Response::error('No autorizado: se requiere el scope mcp:read.');
+            return $this->errorResponse($request, 'scope_denied', 'No autorizado: se requiere el scope mcp:read.');
         }
 
         $validated = $this->validateOrLog($request, [
@@ -45,7 +40,7 @@ class GetFinancialProfile extends Tool
 
         // Correr el servicio antes de auditar -- ver nota en AnalyzePortfolio.
         $props = $this->profiles->getProfile($user, $detail);
-        $props['actions'] = $this->buildActions($user, $props);
+        $props['actions'] = $this->buildActions($props);
 
         $this->logToolCall($request, success: true, safeInput: ['detail' => $detail]);
 
@@ -59,21 +54,23 @@ class GetFinancialProfile extends Tool
      * @param  array<string, mixed>  $props
      * @return list<array<string, mixed>>
      */
-    private function buildActions(User $user, array $props): array
+    private function buildActions(array $props): array
     {
-        if (! ($props['has_profile'] ?? false) || ! $user->financialProfile) {
+        if (! ($props['has_profile'] ?? false)) {
             return [];
         }
 
         // "Ver cifras exactas" (post-MVP, ver política de datos sensibles en
         // CLAUDE.md) queda fuera a propósito: requiere confirmación explícita
         // del usuario, no un action que el LLM pueda disparar por su cuenta.
+        // risk_tolerance ya viene normalizado por EloquentFinancialProfileService
+        // (gap 4) -- no hay que volver a llamar a RiskAnalysisService aquí.
         return [
             ToolAction::make(
                 'simulate_with_my_profile',
                 'Simular con mi perfil',
                 'simulate_investment',
-                ['risk_profile' => $this->riskAnalysis->suggestRiskProfile($user->financialProfile)],
+                ['risk_profile' => $props['risk_tolerance']],
             ),
         ];
     }

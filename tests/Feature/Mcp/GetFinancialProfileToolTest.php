@@ -65,7 +65,30 @@ class GetFinancialProfileToolTest extends TestCase
                 ->where('props.monthly_income', 20000)
                 ->where('props.monthly_expenses', 15000)
                 ->where('props.savings', 5000)
+                // Gap 18: ausente antes aunque ProfileService ya la calculaba.
+                ->where('props.monthly_savings_capacity', 5000)
                 ->etc());
+    }
+
+    /**
+     * risk_tolerance es un string libre en la BD -- gap 4 pedía normalizarlo
+     * antes de exponerlo, en vez de regresar lo que sea que haya en la
+     * columna (aquí, con mayúscula).
+     */
+    public function test_normalizes_risk_tolerance_in_both_detail_levels(): void
+    {
+        $user = User::factory()->create();
+        FinancialProfile::factory()->for($user)->create(['risk_tolerance' => 'Moderate']);
+
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(GetFinancialProfile::class, [])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.risk_tolerance', 'moderate')->etc());
+
+        BanorteServer::tool(GetFinancialProfile::class, ['detail' => 'exact'])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.risk_tolerance', 'moderate')->etc());
     }
 
     public function test_offers_no_actions_when_the_user_has_no_profile(): void
