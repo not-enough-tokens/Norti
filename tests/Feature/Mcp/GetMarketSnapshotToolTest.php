@@ -50,6 +50,17 @@ class GetMarketSnapshotToolTest extends TestCase
             ->assertHasErrors();
     }
 
+    public function test_rejects_more_than_10_symbols(): void
+    {
+        $user = User::factory()->create();
+        Passport::actingAs($user, ['mcp:read']);
+
+        $symbols = array_map(fn (int $i): string => "SYM{$i}", range(1, 11));
+
+        BanorteServer::tool(GetMarketSnapshot::class, ['symbols' => $symbols])
+            ->assertHasErrors();
+    }
+
     public function test_rejects_without_the_mcp_read_scope(): void
     {
         $user = User::factory()->create();

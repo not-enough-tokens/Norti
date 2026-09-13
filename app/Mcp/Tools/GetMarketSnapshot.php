@@ -34,9 +34,9 @@ class GetMarketSnapshot extends Tool
             return Response::error('No autorizado: se requiere el scope mcp:read.');
         }
 
-        $validated = $request->validate([
-            'symbols' => ['required', 'array', 'min:1'],
-            'symbols.*' => ['string'],
+        $validated = $this->validateOrLog($request, [
+            'symbols' => ['required', 'array', 'min:1', 'max:10'],
+            'symbols.*' => ['string', 'regex:/^[A-Za-z0-9.\-]{1,15}$/'],
         ]);
 
         $quotes = [];
@@ -65,7 +65,7 @@ class GetMarketSnapshot extends Tool
         return [
             'symbols' => $schema->array()
                 ->items($schema->string())
-                ->description('Lista de símbolos/tickers a consultar, ej. ["AAPL", "IPC", "CETES28"].')
+                ->description('Lista de símbolos/tickers a consultar (máximo 10), ej. ["AAPL", "IPC", "CETES28"].')
                 ->required(),
         ];
     }
