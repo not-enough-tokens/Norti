@@ -1,4 +1,4 @@
-# ADR 005: Decouple the M5 Agent Layer From Any Single Model Provider
+# ADR 007: Decouple the M5 Agent Layer From Any Single Model Provider
 
 ## Status
 

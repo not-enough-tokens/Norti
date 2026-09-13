@@ -15,12 +15,12 @@ The milestones are designed to minimize coupling between components and allow in
 | Milestone | Name | Main Question | Status |
 |---|---|---|---|
 | M0 | Project Foundation | Where does the system live? | Completed |
-| M1 | Financial Domain | What exists? | In Progress |
-| M2 | Financial Services | What can the system do? | In Progress |
+| M1 | Financial Domain | What exists? | Completed |
+| M2 | Financial Services | What can the system do? | Completed |
 | M3 | MCP Server | How can external agents use it? | Completed |
 | M4 | External Market Data | Where does market data come from? | Completed |
 | M5 | AI / Agents | Who uses these capabilities? | Completed |
-| M6 | Financial Education | How does the system create user value? | Planned |
+| M6 | Financial Education | How does the system create user value? | In Progress |
 | M7 | Security & Hardening | How is the system protected? | Planned |
 | M8 | Product & Demo | How is the complete solution demonstrated? | Planned |
 
@@ -67,12 +67,14 @@ Define the entities and relationships required to represent the financial domain
 
 - `User`
 - `FinancialProfile`
-- `FinancialGoal`
+- `FinancialGoal` — no `priority` column, unlike the original plan; just `name`, `target_amount`, `current_amount`, `target_day`, `goal_type`. Its factory was missing until a recent audit fix (see M2) — until then the model had zero test coverage.
 - `Portfolio`
 - `Holding`
 - `Asset`
 - `EducationalTopic`
-- `EducationalProgress`
+- `EducationalProgress` — implemented as the `educational_topic_user` pivot (`completed_at` timestamp) rather than a dedicated model; `EducationalTopic::users()` exposes it via `belongsToMany()->withPivot('completed_at')`.
+
+All entities above exist with migrations and (except `EducationalTopic`, which uses raw `::create()` in tests) factories.
 
 ### Expected Result
 
@@ -80,7 +82,7 @@ The application has a coherent financial domain represented through models, migr
 
 ### Status
 
-**In Progress**
+**Completed**
 
 ---
 
@@ -90,16 +92,20 @@ The application has a coherent financial domain represented through models, migr
 
 Implement the application's core business capabilities independently from MCP and external interfaces.
 
-### Planned Services
+### Services
 
-- `FinancialProfileService`
-- `FinancialGoalService`
-- `PortfolioService`
-- `RiskAnalysisService`
-- `InvestmentSimulationService`
-- `FinancialEducationService`
+- `ProfileService` (`FinancialProfileService`'s actual name) — `createOrUpdate()`, `monthlySavingsCapacity()`. Wrapped by `EloquentFinancialProfileService` (`app/Services/Financial/`) for the M3 contract, which buckets the savings rate into `low`/`moderate`/`high` instead of exposing exact income/expenses to the model by default.
+- `FinancialGoalService` — never built as a named class. `InvestmentSimulationService::projectForGoal()`/`evaluateGoal()` cover the same need (project a goal, detect if it's overdue, verify the goal and profile belong to the same user) and have test coverage, but **nothing in the app calls them** — no MCP tool, route, or view. [ADR 006](../decisions/006-get-financial-goals-tool.md) proposes a 7th, read-only MCP tool for this; pending a decision, since the 6-tool catalog was a closed decision and the new tool would touch exact amounts (see the sensitive-data policy in `CLAUDE.md`).
+- `PortfolioService` — portfolio creation (`createForUser()`, allocates holdings per the user's risk profile) and aggregate stats (`totalInvested()`, `currentDistribution()`). Wrapped by `EloquentPortfolioService` for the M3 read model, which enriches holdings with live market prices — cash (`efectivo`) is valued at face value instead of queried from Twelve Data (it isn't a quotable instrument).
+- `RiskAnalysisService` — asset allocation and expected-return recommendations per risk profile. `risk_tolerance` is a free string column with no DB-level enum; callers must normalize it through `suggestRiskProfile()` rather than pass it raw, or an unrecognized value throws.
+- `InvestmentSimulationService` — month-by-month compound-interest projection (`project()`), plus the goal-projection methods above. Wrapped by `InvestmentSimulationServiceAdapter` for the M3 contract.
+- `FinancialEducationService` — `getLearningPath()` returns every `EducationalTopic` with an `is_completed` flag for the given user. No difficulty progression or recommendation logic beyond that flag (see M6).
 
 Market data ended up without a dedicated service: MCP tools and `MarketDataController` depend on `MarketDataProviderContract` (M4) directly — see ADR 003.
+
+A recurring theme across the M3-contract adapters: they wrap the real M2 service rather than reimplementing it (e.g. `RiskAnalysisServiceAdapter` calls into `RiskAnalysisService`, `InvestmentSimulationServiceAdapter` into `InvestmentSimulationService`) — a deliberate pattern to avoid the kind of duplicate-implementation problem M4 had before its consolidation (ADR 003).
+
+Several defects in this layer (asset-type vocabulary split between English config keys and Spanish DB values, an unrecognized `risk_tolerance` crashing `analyze_portfolio`, an overdue goal reporting a valid projection, a missing `FinancialGoal` factory, cross-user goal/profile mixing, cash being queried as a market symbol) were found and fixed — see `docs/development/auditoria.md` for the full list with verification evidence.
 
 ### Architectural Rule
 
@@ -113,7 +119,7 @@ Core financial operations can be executed independently of MCP.
 
 ### Status
 
-**In Progress**
+**Completed** — except financial-goal exposure (see `FinancialGoalService` above and ADR 006), which is scoped as a follow-up, not a blocker.
 
 ---
 
@@ -264,7 +270,7 @@ M5 is being built as a vertical slice, verified step by step before adding any L
 
 1. **MCP client connectivity (done)** — `php artisan mcp:client-tools` connects to `/mcp/banorte` as a plain MCP client (`Laravel\Mcp\Client`, part of the already-installed `laravel/mcp` package — no new dependency), authenticates with a Passport token, and calls `list_tools()`. Verified end-to-end against a real running server: all 6 tools returned with name, description, and inputSchema.
 2. **Manual `call_tool()` (done)** — `php artisan mcp:client-call <tool> --arguments=<json>` calls a specific tool with real arguments and prints the `ToolResult` (text + structuredContent). Verified end-to-end with `mcp:client-call get_market_snapshot --arguments='{"symbols":["AAPL"]}'` against the real Twelve Data API (not mocked): the request went through the unmodified chain `MCP Tool → MarketDataProviderContract → TwelveDataMarketDataProvider → TwelveDataClient → Twelve Data`, returning a real AAPL quote via `Response::structured()`.
-3. **Real AI agent (done, provider-decoupled, fully verified)** — `php artisan mcp:demo-agent "<pregunta>"` runs the full expected flow with a real agent built on the [Laravel AI SDK](https://laravel.com/docs/ai-sdk) (`laravel/ai`), not a hand-rolled provider client. `App\Ai\Agents\BanorteMcpAgent` implements `Agent` + `HasTools`; its `tools()` spreads the MCP client's tool collection directly and the SDK wraps/translates each tool for whichever provider is active — no provider-specific code in the agent. Default provider is OpenAI (`#[Provider(Lab::OpenAI)]`), overridable per run with `--provider`/`--model`. See [ADR 005](../decisions/005-ai-agent-provider-decoupling.md) for the full rationale (this replaced an earlier Anthropic-only implementation). **Verified end-to-end with a real OpenAI key**: `mcp:demo-agent "¿Cuál es la cotización actual de AAPL?"` connected to `/mcp/banorte`, the model chose a market-data tool on its own (no manual tool selection), the call went through `MCP Tool → MarketDataProviderContract → TwelveDataMarketDataProvider → TwelveDataClient → Twelve Data`, and the agent answered in natural language with the real quote (price, change, day range) matching the raw data seen in step 2. Requires `php artisan serve` running and `OPENAI_API_KEY` (or another configured provider) set.
+3. **Real AI agent (done, provider-decoupled, fully verified)** — `php artisan mcp:demo-agent "<pregunta>"` runs the full expected flow with a real agent built on the [Laravel AI SDK](https://laravel.com/docs/ai-sdk) (`laravel/ai`), not a hand-rolled provider client. `App\Ai\Agents\BanorteMcpAgent` implements `Agent` + `HasTools`; its `tools()` spreads the MCP client's tool collection directly and the SDK wraps/translates each tool for whichever provider is active — no provider-specific code in the agent. Default provider is OpenAI (`#[Provider(Lab::OpenAI)]`), overridable per run with `--provider`/`--model`. See [ADR 007](../decisions/007-ai-agent-provider-decoupling.md) for the full rationale (this replaced an earlier Anthropic-only implementation). **Verified end-to-end with a real OpenAI key**: `mcp:demo-agent "¿Cuál es la cotización actual de AAPL?"` connected to `/mcp/banorte`, the model chose a market-data tool on its own (no manual tool selection), the call went through `MCP Tool → MarketDataProviderContract → TwelveDataMarketDataProvider → TwelveDataClient → Twelve Data`, and the agent answered in natural language with the real quote (price, change, day range) matching the raw data seen in step 2. Requires `php artisan serve` running and `OPENAI_API_KEY` (or another configured provider) set.
 
 All three steps of the vertical slice are now verified end-to-end against real services (Twelve Data, OpenAI) — no mocks. Remaining M5-adjacent work (a chat UI, streaming responses, persisted conversations) is out of this milestone's core scope; see M8.
 
@@ -282,14 +288,16 @@ Extend financial intelligence into personalized financial education.
 
 The system should not only provide financial information or analysis, but also help users understand the concepts behind that information.
 
-### Planned Capabilities
+### Capabilities
 
-- educational topics;
-- personalized topic recommendations;
-- learning paths;
-- educational progress;
-- contextual explanations;
-- identification of relevant knowledge gaps.
+- educational topics ✅ — `EducationalTopic` model, seeded content, `GET /education` and `GET /education/{educationalTopic}` (auth-protected, plain unstyled Blade views).
+- learning paths ⚠️ partial — `FinancialEducationService::getLearningPath()` returns every topic ordered by `id` with an `is_completed` flag; it's a fixed linear list, not an adaptive path.
+- educational progress ⚠️ partial — readable (`educational_topic_user.completed_at`, surfaced as `is_completed`) but **not writable anywhere in the app**: no route, controller action, or MCP tool sets `completed_at`. Current tests write it directly via `$user->educationalTopics()->attach($topic, ['completed_at' => now()])`, which isn't reachable from the actual product.
+- personalized topic recommendations ❌ — not implemented; recommendation today is "not yet completed", not based on the user's financial situation.
+- contextual explanations ❌ — `FinancialEducationIntegrationService::getFinancialContext()` (profile + goals + portfolios) exists but is **not called anywhere**. It used to be built and discarded unused on every `/education` load (three wasted queries, plus a `FinancialProfile` with exact amounts sitting in the Blade view's scope); that dead call was removed. The service itself was kept because connecting financial context to education is M6's actual objective, just not built yet.
+- identification of relevant knowledge gaps ❌ — not implemented.
+
+A separate, unmerged branch (`feature/education-mcp`) adds four MCP tools (`get_educational_topic`, `get_learning_path`, `get_learning_progress`, `mark_topic_completed`) that would close the progress-writing gap and expose this milestone through MCP like the other five milestones — evaluate merging it (after rebasing onto current `master`) before treating M6 as blocked on new work.
 
 ### Example Flow
 
@@ -317,7 +325,7 @@ The prototype demonstrates a clear connection between financial intelligence and
 
 ### Status
 
-**Planned**
+**In Progress** — topics, a basic learning path, and auth-protected views exist; the financial-intelligence connection and progress-writing are not built yet (see Capabilities above).
 
 ---
 
