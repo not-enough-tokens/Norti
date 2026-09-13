@@ -56,6 +56,46 @@ class AnalyzePortfolioToolTest extends TestCase
                 ->etc());
     }
 
+    /**
+     * A2UI contract gap 8: el seed real mezcla AAPL en USD con CETES28 en MXN
+     * dentro del mismo portafolio -- sin convertir, la distribución sumaba
+     * pesos y dólares como si fueran la misma unidad.
+     */
+    public function test_normalizes_currencies_before_computing_the_allocation(): void
+    {
+        Http::fake(function (Request $request) {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+            return match ($query['symbol'] ?? null) {
+                'AAPL' => Http::response(['symbol' => 'AAPL', 'close' => '200.00']),
+                'CETES28' => Http::response(['symbol' => 'CETES28', 'close' => '10.00']),
+                default => Http::response(['status' => 'error'], 400),
+            };
+        });
+
+        $user = User::factory()->create();
+        $portfolio = Portfolio::factory()->for($user)->create();
+
+        // 10 AAPL @ $200 USD -> 2,000 USD * 18.5 = 37,000 MXN.
+        $stock = Asset::factory()->create(['symbol' => 'AAPL', 'asset_type' => 'accion', 'currency' => 'USD']);
+        Holding::factory()->for($portfolio)->for($stock)->create(['quantity' => 10, 'average_cost' => 150]);
+
+        // 1000 CETES28 @ $10 MXN -> 10,000 MXN.
+        $bond = Asset::factory()->create(['symbol' => 'CETES28', 'asset_type' => 'bono', 'currency' => 'MXN']);
+        Holding::factory()->for($portfolio)->for($bond)->create(['quantity' => 1000, 'average_cost' => 10]);
+
+        Passport::actingAs($user, ['mcp:read']);
+
+        // Total = 37,000 + 10,000 = 47,000 MXN -> accion 78.72%, bono 21.28%.
+        // Sin convertir (sumando 2,000 + 10,000 = 12,000 crudo) hubiera dado
+        // accion 16.67% / bono 83.33% -- justo al revés.
+        BanorteServer::tool(AnalyzePortfolio::class, [])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.allocation_by_asset_type.accion', 78.72)
+                ->where('props.allocation_by_asset_type.bono', 21.28)
+                ->etc());
+    }
+
     public function test_reports_no_holdings_when_portfolio_is_empty(): void
     {
         $user = User::factory()->create();
@@ -63,6 +103,9 @@ class AnalyzePortfolioToolTest extends TestCase
 
         Passport::actingAs($user, ['mcp:read']);
 
+        // Los 3 puntos del scatter (brecha 19) salen de investment_rules.php:
+        // accion% por perfil (0/20/60) y expected_annual_return*100 (6.5/9/12.5).
+        // Sin holdings no hay `reference_x` -- no hay portafolio que ubicar.
         BanorteServer::tool(AnalyzePortfolio::class, [])
             ->assertOk()
             ->assertStructuredContent([
@@ -74,6 +117,16 @@ class AnalyzePortfolioToolTest extends TestCase
                     'concentration_warning' => false,
                     'risk_tolerance' => null,
                     'recommended_allocation_by_asset_type' => null,
+                    'chart' => [
+                        'type' => 'scatter',
+                        'x_axis' => ['unit' => 'percent', 'domain' => [0, 100]],
+                        'y_axis' => ['unit' => 'percent', 'domain' => [0, 15], 'ticks' => [0, 7.5, 15]],
+                        'data' => [
+                            ['key' => 'conservative', 'x' => 0, 'y' => 6.5],
+                            ['key' => 'moderate', 'x' => 20, 'y' => 9],
+                            ['key' => 'aggressive', 'x' => 60, 'y' => 12.5],
+                        ],
+                    ],
                     'actions' => [],
                 ],
             ]);

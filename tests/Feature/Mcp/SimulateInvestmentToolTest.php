@@ -52,44 +52,91 @@ class SimulateInvestmentToolTest extends TestCase
             'risk_profile' => 'moderate',
         ])
             ->assertOk()
-            ->assertStructuredContent([
-                'component' => 'simulation_result_card',
-                'props' => [
-                    'initial_amount' => 1000,
-                    'months' => 12,
-                    'risk_profile' => 'moderate',
-                    'assumed_annual_rate' => 0.09,
-                    'projected_value' => 1093.81,
-                    'projected_gain' => 93.81,
-                    'disclaimer' => 'Proyección aritmética simplificada (interés compuesto mensual a tasa fija). No considera volatilidad de mercado ni constituye asesoría financiera.',
-                    'actions' => [
-                        [
-                            'id' => 'resimulate_36_months',
-                            'label' => 'Simular a 36 meses',
-                            'tool' => 'simulate_investment',
-                            'params' => ['amount' => 1000.0, 'months' => 36, 'risk_profile' => 'moderate'],
-                        ],
-                        [
-                            'id' => 'resimulate_60_months',
-                            'label' => 'Simular a 60 meses',
-                            'tool' => 'simulate_investment',
-                            'params' => ['amount' => 1000.0, 'months' => 60, 'risk_profile' => 'moderate'],
-                        ],
-                        [
-                            'id' => 'resimulate_conservative',
-                            'label' => 'Perfil conservador',
-                            'tool' => 'simulate_investment',
-                            'params' => ['amount' => 1000.0, 'months' => 12, 'risk_profile' => 'conservative'],
-                        ],
-                        [
-                            'id' => 'resimulate_aggressive',
-                            'label' => 'Perfil agresivo',
-                            'tool' => 'simulate_investment',
-                            'params' => ['amount' => 1000.0, 'months' => 12, 'risk_profile' => 'aggressive'],
-                        ],
+            ->assertStructuredContent(fn ($json) => $json->where('component', 'simulation_result_card')
+                ->where('props.initial_amount', 1000)
+                ->where('props.months', 12)
+                ->where('props.risk_profile', 'moderate')
+                ->where('props.assumed_annual_rate', 0.09)
+                ->where('props.projected_value', 1093.81)
+                ->where('props.projected_gain', 93.81)
+                ->where('props.disclaimer', 'Proyección aritmética simplificada (interés compuesto mensual a tasa fija). No considera volatilidad de mercado ni constituye asesoría financiera.')
+                ->where('props.actions', [
+                    [
+                        'id' => 'resimulate_36_months',
+                        'label' => 'Simular a 36 meses',
+                        'tool' => 'simulate_investment',
+                        'params' => ['amount' => 1000, 'months' => 36, 'risk_profile' => 'moderate'],
                     ],
-                ],
-            ]);
+                    [
+                        'id' => 'resimulate_60_months',
+                        'label' => 'Simular a 60 meses',
+                        'tool' => 'simulate_investment',
+                        'params' => ['amount' => 1000, 'months' => 60, 'risk_profile' => 'moderate'],
+                    ],
+                    [
+                        'id' => 'resimulate_conservative',
+                        'label' => 'Perfil conservador',
+                        'tool' => 'simulate_investment',
+                        'params' => ['amount' => 1000, 'months' => 12, 'risk_profile' => 'conservative'],
+                    ],
+                    [
+                        'id' => 'resimulate_aggressive',
+                        'label' => 'Perfil agresivo',
+                        'tool' => 'simulate_investment',
+                        'params' => ['amount' => 1000, 'months' => 12, 'risk_profile' => 'aggressive'],
+                    ],
+                ])
+                ->etc());
+    }
+
+    /**
+     * A2UI contract gap 14: project() ya calculaba la serie mes a mes, pero el
+     * adapter solo usaba el último valor. Máximo 10 periodos (regla de
+     * gráficas) para una simulación de 12 meses.
+     */
+    public function test_includes_a_stacked_column_chart_with_principal_and_gain_per_period(): void
+    {
+        $user = User::factory()->create();
+        Passport::actingAs($user, ['mcp:simulate']);
+
+        BanorteServer::tool(SimulateInvestment::class, [
+            'amount' => 1000,
+            'months' => 12,
+            'risk_profile' => 'moderate',
+        ])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.chart.type', 'stacked_column')
+                ->where('props.chart.unit', 'currency')
+                ->where('props.chart.series', [
+                    ['key' => 'principal', 'role' => 'muted'],
+                    ['key' => 'gain', 'role' => 'positive'],
+                ])
+                ->where('props.chart.data.9.key', 12)
+                ->where('props.chart.data.9.total', 1093.81)
+                ->where('props.chart.data.9.values.principal', 1000)
+                ->where('props.chart.data.9.values.gain', 93.81)
+                ->etc());
+    }
+
+    /**
+     * Un plazo corto (≤ 10 meses) no necesita agrupar: cada mes es su propio
+     * periodo.
+     */
+    public function test_stacked_column_chart_keeps_every_month_for_a_short_term(): void
+    {
+        $user = User::factory()->create();
+        Passport::actingAs($user, ['mcp:simulate']);
+
+        BanorteServer::tool(SimulateInvestment::class, [
+            'amount' => 1000,
+            'months' => 6,
+            'risk_profile' => 'moderate',
+        ])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->has('props.chart.data', 6)
+                ->where('props.chart.data.0.key', 1)
+                ->where('props.chart.data.5.key', 6)
+                ->etc());
     }
 
     public function test_never_writes_the_amount_to_the_audit_log(): void

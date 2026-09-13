@@ -2,10 +2,12 @@
 
 namespace App\Services\Financial;
 
+use App\Mcp\Support\ChartData;
 use App\Models\User;
 use App\Services\Contracts\PortfolioServiceContract;
 use App\Services\Contracts\RiskAnalysisServiceContract;
 use App\Services\RiskAnalysisService;
+use App\Services\Support\CurrencyConverter;
 
 /**
  * Adapter over Integrante A/M2's real RiskAnalysisService. The actual-holdings
@@ -19,6 +21,7 @@ class RiskAnalysisServiceAdapter implements RiskAnalysisServiceContract
     public function __construct(
         private readonly PortfolioServiceContract $portfolios,
         private readonly RiskAnalysisService $riskAnalysis,
+        private readonly CurrencyConverter $currency,
     ) {}
 
     public function analyze(User $user): array
@@ -29,7 +32,13 @@ class RiskAnalysisServiceAdapter implements RiskAnalysisServiceContract
 
         foreach ($this->portfolios->getPortfolio($user)['portfolios'] as $portfolio) {
             foreach ($portfolio['holdings'] as $holding) {
-                $value = $holding['market_value'] ?? $holding['cost_basis'];
+                // A2UI contract gap 8: sin esto, un portafolio con AAPL/MSFT
+                // en USD y CETES28 en MXN sumaba pesos y dólares como si
+                // fueran la misma unidad.
+                $value = $this->currency->toBaseCurrency(
+                    $holding['market_value'] ?? $holding['cost_basis'],
+                    $holding['currency'],
+                );
 
                 if ($holding['market_value'] === null) {
                     $hasUnpricedHoldings = true;
@@ -50,6 +59,7 @@ class RiskAnalysisServiceAdapter implements RiskAnalysisServiceContract
                 'concentration_warning' => false,
                 'risk_tolerance' => $riskTolerance,
                 'recommended_allocation_by_asset_type' => $recommendedAllocation,
+                'chart' => $this->expectedReturnChart($riskTolerance, null),
             ];
         }
 
@@ -63,10 +73,11 @@ class RiskAnalysisServiceAdapter implements RiskAnalysisServiceContract
         }
 
         arsort($allocation);
+        $allocation = $this->withEveryAssetType($allocation);
 
         return [
             'has_holdings' => true,
-            'allocation_by_asset_type' => $this->withEveryAssetType($allocation),
+            'allocation_by_asset_type' => $allocation,
             'diversification_score' => round(1 - $herfindahl, 4),
             'concentration_warning' => max($allocation) > 50.0,
             // Significa "ningún holding se quedó sin valuar", no "todo se
@@ -76,7 +87,41 @@ class RiskAnalysisServiceAdapter implements RiskAnalysisServiceContract
             'priced_with_live_market_data' => ! $hasUnpricedHoldings,
             'risk_tolerance' => $riskTolerance,
             'recommended_allocation_by_asset_type' => $recommendedAllocation,
+            'chart' => $this->expectedReturnChart($riskTolerance, $allocation['accion'] ?? null),
         ];
+    }
+
+    /**
+     * Dispersión riesgo/rendimiento de los 3 perfiles (A2UI contract gap 19).
+     * El rendimiento esperado de *este* portafolio real está bloqueado en una
+     * decisión de M2 (falta `expected_annual_return` por `asset_type`) -- como
+     * proxy, mientras tanto, `reference_x` usa el % en `accion` del portafolio
+     * contra el mismo eje que separa los 3 perfiles (ver a2ui-charts-todo.md).
+     */
+    private function expectedReturnChart(?string $riskTolerance, ?float $accionAllocation): array
+    {
+        $equityByProfile = config('investment_rules.asset_allocation', []);
+        $expectedReturn = config('investment_rules.expected_annual_return', []);
+
+        $data = [];
+        foreach (config('investment_rules.risk_levels', []) as $profile) {
+            $data[] = array_filter([
+                'key' => $profile,
+                'x' => $equityByProfile[$profile]['accion'] ?? 0,
+                'y' => round(($expectedReturn[$profile] ?? 0) * 100, 2),
+                'emphasis' => $profile === $riskTolerance ? 'user_profile' : null,
+            ], fn (mixed $value): bool => $value !== null);
+        }
+
+        $yMax = max(1.0, ceil(max(array_column($data, 'y')) * 1.2));
+
+        return ChartData::make(
+            type: 'scatter',
+            data: $data,
+            xAxis: ['unit' => 'percent', 'domain' => [0, 100]],
+            yAxis: ['unit' => 'percent', 'domain' => [0, $yMax], 'ticks' => [0, round($yMax / 2, 1), $yMax]],
+            referenceX: $accionAllocation !== null ? ['key' => 'portfolio', 'value' => $accionAllocation] : null,
+        );
     }
 
     /**
