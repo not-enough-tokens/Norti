@@ -3,72 +3,58 @@
 @php
     $quote = $props['quote'] ?? [];
     $profile = $props['profile'] ?? [];
-    // quote/profile son el payload de Twelve Data (o el Mock) casi sin tocar --
-    // no hay un shape fijo que hardcodear, así que solo se resaltan los
-    // campos más comunes y el resto se ve como una lista clave/valor.
-    $highlighted = ['symbol', 'name', 'close', 'percent_change', 'currency', 'exchange'];
+    $title = $props['local_asset']['name'] ?? $props['symbol'];
 @endphp
 
-<div>
-    <strong>{{ $props['symbol'] }}</strong>
-    @if ($props['local_asset'] ?? null)
-        <span class="pill">{{ $props['local_asset']['name'] }}</span>
-        <span class="pill">{{ $props['local_asset']['asset_type'] }}</span>
-        <span class="pill">{{ $props['local_asset']['currency'] }}</span>
-    @else
-        <span class="hint">No está en el catálogo local.</span>
-    @endif
+<x-a2ui.atoms.card :title="$title" tool="get_asset_information">
+    <div class="flex flex-wrap items-center gap-2">
+        <x-a2ui.atoms.badge>{{ $props['symbol'] }}</x-a2ui.atoms.badge>
 
-    <div style="margin-top: 0.5rem;">
-        @foreach ($highlighted as $key)
-            @continue (! isset($quote[$key]))
-            <div class="stat">
-                <span class="label">{{ $key }}</span>
-                <span class="value @if ($key === 'percent_change') badge {{ (float) $quote[$key] >= 0 ? 'positive' : 'negative' }} @endif">
-                    {{ $quote[$key] }}@if ($key === 'percent_change')%@endif
-                </span>
-            </div>
-        @endforeach
+        @if ($props['local_asset'] ?? null)
+            <x-a2ui.atoms.badge tone="brand">{{ ucfirst($props['local_asset']['asset_type']) }}</x-a2ui.atoms.badge>
+            <x-a2ui.atoms.badge>{{ $props['local_asset']['currency'] }}</x-a2ui.atoms.badge>
+        @else
+            <span class="text-xs text-text-muted">No está en el catálogo local.</span>
+        @endif
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        @if (isset($quote['close']))
+            <x-a2ui.atoms.stat label="Último cierre">{{ $quote['close'] }}</x-a2ui.atoms.stat>
+        @endif
+
+        @if (isset($quote['percent_change']))
+            <x-a2ui.atoms.stat label="Variación" :tone="(float) $quote['percent_change'] >= 0 ? 'positive' : 'negative'">
+                {{ (float) $quote['percent_change'] >= 0 ? '+' : '' }}{{ $quote['percent_change'] }}%
+            </x-a2ui.atoms.stat>
+        @endif
+
+        @if (isset($quote['exchange']))
+            <x-a2ui.atoms.stat label="Bolsa">{{ $quote['exchange'] }}</x-a2ui.atoms.stat>
+        @endif
     </div>
 
     @if ($props['chart'] ?? null)
-        {{-- Serie de precios (Chart / Line en el contrato). --}}
-        @php
-            $data = $props['chart']['data'];
-            $yDomain = $props['chart']['y_axis']['domain'];
-            $n = count($data);
-            $points = collect($data)->values()->map(function ($point, $i) use ($n, $yDomain) {
-                $x = $n > 1 ? $i / ($n - 1) * 280 + 10 : 150;
-                $y = $yDomain[1] > $yDomain[0] ? 140 - (($point['y'] - $yDomain[0]) / ($yDomain[1] - $yDomain[0]) * 130) : 75;
-
-                return "{$x},{$y}";
-            })->implode(' ');
-        @endphp
-        <svg class="chart" viewBox="0 0 300 150" role="img" aria-label="Serie de precios">
-            <polyline points="{{ $points }}" fill="none" stroke="#1565c0" stroke-width="2" vector-effect="non-scaling-stroke" />
-        </svg>
-        <span class="hint">{{ $data[0]['x'] }} → {{ $data[count($data) - 1]['x'] }}</span>
+        <x-a2ui.atoms.chart-line :chart="$props['chart']" />
     @else
-        <p class="hint">Sin serie de precios disponible.</p>
+        <p class="text-sm text-text-muted">Sin serie de precios disponible.</p>
     @endif
 
     @if ($profile !== [])
-        <details style="margin-top: 0.5rem;">
-            <summary class="hint">Perfil de la empresa</summary>
-            <table>
+        <details class="text-sm">
+            <summary class="cursor-pointer text-text-muted">Perfil de la empresa</summary>
+            <div class="mt-2 flex flex-col">
                 @foreach ($profile as $key => $value)
                     @continue (is_array($value))
-                    <tr><th>{{ $key }}</th><td>{{ $value }}</td></tr>
+                    <x-a2ui.atoms.key-value-row :label="$key">{{ $value }}</x-a2ui.atoms.key-value-row>
                 @endforeach
-            </table>
+            </div>
         </details>
     @endif
-</div>
 
-@if (($props['actions'] ?? []) !== [])
-    <div style="margin-top: 0.5rem;">
-        @foreach ($props['actions'] as $action)
-            <span class="badge">{{ $action['label'] }}</span>
+    <x-slot:actions>
+        @foreach ($props['actions'] ?? [] as $action)
+            <x-a2ui.atoms.option-chip>{{ $action['label'] }}</x-a2ui.atoms.option-chip>
         @endforeach
-    </div>
-@endif
+    </x-slot:actions>
+</x-a2ui.atoms.card>
