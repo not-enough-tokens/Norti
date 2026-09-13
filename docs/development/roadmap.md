@@ -19,7 +19,7 @@ The milestones are designed to minimize coupling between components and allow in
 | M2 | Financial Services | What can the system do? | In Progress |
 | M3 | MCP Server | How can external agents use it? | Completed |
 | M4 | External Market Data | Where does market data come from? | Completed |
-| M5 | AI / Agents | Who uses these capabilities? | In Progress |
+| M5 | AI / Agents | Who uses these capabilities? | Completed |
 | M6 | Financial Education | How does the system create user value? | Planned |
 | M7 | Security & Hardening | How is the system protected? | Planned |
 | M8 | Product & Demo | How is the complete solution demonstrated? | Planned |
@@ -264,11 +264,13 @@ M5 is being built as a vertical slice, verified step by step before adding any L
 
 1. **MCP client connectivity (done)** — `php artisan mcp:client-tools` connects to `/mcp/banorte` as a plain MCP client (`Laravel\Mcp\Client`, part of the already-installed `laravel/mcp` package — no new dependency), authenticates with a Passport token, and calls `list_tools()`. Verified end-to-end against a real running server: all 6 tools returned with name, description, and inputSchema.
 2. **Manual `call_tool()` (done)** — `php artisan mcp:client-call <tool> --arguments=<json>` calls a specific tool with real arguments and prints the `ToolResult` (text + structuredContent). Verified end-to-end with `mcp:client-call get_market_snapshot --arguments='{"symbols":["AAPL"]}'` against the real Twelve Data API (not mocked): the request went through the unmodified chain `MCP Tool → MarketDataProviderContract → TwelveDataMarketDataProvider → TwelveDataClient → Twelve Data`, returning a real AAPL quote via `Response::structured()`.
-3. **Real AI agent (done, provider-decoupled)** — `php artisan mcp:demo-agent "<pregunta>"` runs the full expected flow with a real agent built on the [Laravel AI SDK](https://laravel.com/docs/ai-sdk) (`laravel/ai`), not a hand-rolled provider client. `App\Ai\Agents\BanorteMcpAgent` implements `Agent` + `HasTools`; its `tools()` spreads the MCP client's tool collection directly and the SDK wraps/translates each tool for whichever provider is active — no provider-specific code in the agent. Default provider is OpenAI (`#[Provider(Lab::OpenAI)]`), overridable per run with `--provider`/`--model`. See [ADR 005](../decisions/005-ai-agent-provider-decoupling.md) for the full rationale (this replaced an earlier Anthropic-only implementation). Verified up to the real provider call (issues a Passport token, connects to `/mcp/banorte`, `BanorteMcpAgent::tools()` gathers the 6 real MCP tools, request reaches `api.openai.com` and fails only on the missing real API key) — requires `php artisan serve` running and `OPENAI_API_KEY` (or another configured provider) set for a full response.
+3. **Real AI agent (done, provider-decoupled, fully verified)** — `php artisan mcp:demo-agent "<pregunta>"` runs the full expected flow with a real agent built on the [Laravel AI SDK](https://laravel.com/docs/ai-sdk) (`laravel/ai`), not a hand-rolled provider client. `App\Ai\Agents\BanorteMcpAgent` implements `Agent` + `HasTools`; its `tools()` spreads the MCP client's tool collection directly and the SDK wraps/translates each tool for whichever provider is active — no provider-specific code in the agent. Default provider is OpenAI (`#[Provider(Lab::OpenAI)]`), overridable per run with `--provider`/`--model`. See [ADR 005](../decisions/005-ai-agent-provider-decoupling.md) for the full rationale (this replaced an earlier Anthropic-only implementation). **Verified end-to-end with a real OpenAI key**: `mcp:demo-agent "¿Cuál es la cotización actual de AAPL?"` connected to `/mcp/banorte`, the model chose a market-data tool on its own (no manual tool selection), the call went through `MCP Tool → MarketDataProviderContract → TwelveDataMarketDataProvider → TwelveDataClient → Twelve Data`, and the agent answered in natural language with the real quote (price, change, day range) matching the raw data seen in step 2. Requires `php artisan serve` running and `OPENAI_API_KEY` (or another configured provider) set.
+
+All three steps of the vertical slice are now verified end-to-end against real services (Twelve Data, OpenAI) — no mocks. Remaining M5-adjacent work (a chat UI, streaming responses, persisted conversations) is out of this milestone's core scope; see M8.
 
 ### Status
 
-**In Progress**
+**Completed**
 
 ---
 
