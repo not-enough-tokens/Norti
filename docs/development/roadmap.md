@@ -17,8 +17,8 @@ The milestones are designed to minimize coupling between components and allow in
 | M0 | Project Foundation | Where does the system live? | Completed |
 | M1 | Financial Domain | What exists? | In Progress |
 | M2 | Financial Services | What can the system do? | In Progress |
-| M3 | MCP Server | How can external agents use it? | Planned |
-| M4 | External Market Data | Where does market data come from? | In Progress |
+| M3 | MCP Server | How can external agents use it? | Completed |
+| M4 | External Market Data | Where does market data come from? | Completed |
 | M5 | AI / Agents | Who uses these capabilities? | Planned |
 | M6 | Financial Education | How does the system create user value? | Planned |
 | M7 | Security & Hardening | How is the system protected? | Planned |
@@ -98,7 +98,8 @@ Implement the application's core business capabilities independently from MCP an
 - `RiskAnalysisService`
 - `InvestmentSimulationService`
 - `FinancialEducationService`
-- `MarketDataService`
+
+Market data ended up without a dedicated service: MCP tools and `MarketDataController` depend on `MarketDataProviderContract` (M4) directly — see ADR 003.
 
 ### Architectural Rule
 
@@ -122,24 +123,23 @@ Core financial operations can be executed independently of MCP.
 
 Expose selected application capabilities through the Model Context Protocol.
 
-### Example Tools
+### Implemented Tools
 
 - `get_financial_profile`
-- `get_financial_goals`
 - `get_portfolio`
 - `analyze_portfolio`
-- `simulate_investment`
 - `get_asset_information`
-- `get_market_quote`
+- `get_market_snapshot`
+- `simulate_investment`
 
-The final tool set may change according to the capabilities implemented during the hackathon.
+Registered in `App\Mcp\Servers\BanorteServer`, exposed at `/mcp/banorte` (`routes/ai.php`), protected by Passport (`auth:api` + scopes `mcp:read`/`mcp:simulate`) and `throttle:mcp`. `get_market_snapshot` and `get_asset_information` cover the market-data capability described in M4 — the earlier example name `get_market_quote` was dropped as redundant during the M4 consolidation (see ADR 003's update note).
 
 ### Architectural Flow
 
 ```text
 MCP Tool
     ↓
-Application Service
+Application Service (or MarketDataProviderContract directly, for market data)
     ↓
 Domain / Provider
     ↓
@@ -152,7 +152,7 @@ An MCP client or AI agent can discover and invoke selected Banorte MCP capabilit
 
 ### Status
 
-**Planned**
+**Completed**
 
 ---
 
@@ -169,52 +169,37 @@ Twelve Data.
 ### Architecture
 
 ```text
-MarketDataProvider
+MCP Tool / MarketDataController
+        ↓
+MarketDataProviderContract
         ↑
-TwelveDataProvider
+TwelveDataMarketDataProvider
         ↓
 TwelveDataClient
         ↓
 Twelve Data API
 ```
 
-### Planned Capabilities
+### Capabilities
 
-- current asset quotes;
-- historical prices;
-- basic asset profiles;
-- normalization of provider responses;
-- provider-specific error handling.
+- current asset quotes (`quote()`, cached 60s);
+- historical prices (`timeSeries()`, normalized into typed bars);
+- basic asset profiles (`profile()`, cached 60s);
+- provider-specific error handling (`TwelveDataException` → `MarketDataUnavailableException`).
+
+`quote()`/`profile()` currently pass Twelve Data's response through close to unmodified rather than normalizing every field; only `timeSeries()` is normalized. See ADR 003 for the full rationale, including a note on the two parallel implementations that were consolidated into this one.
 
 ### Testing
 
-A `MockMarketDataProvider` should be used for deterministic tests and to avoid unnecessary external API calls.
+`MockMarketDataProvider` (`app/Services/MarketData/`) implements `MarketDataProviderContract` with fixed data, for deterministic tests that avoid unnecessary external API calls.
 
 ### Expected Result
 
-Financial services can request market data through the internal `MarketDataProvider` contract without depending directly on Twelve Data.
+MCP tools and `MarketDataController` can request market data through the internal `MarketDataProviderContract` without depending directly on Twelve Data.
 
 ### Status
 
-**In Progress**
-
-### Current Focus
-
-The initial implementation should establish the following vertical slice:
-
-```text
-TwelveDataClient
-       ↓
-TwelveDataProvider
-       ↓
-MarketDataProvider
-       ↓
-getQuote()
-       ↓
-Tests
-```
-
-Historical data and additional provider capabilities can be implemented after the quote flow is working.
+**Completed**
 
 ---
 
@@ -561,25 +546,9 @@ A milestone may be marked complete when its required capability works reliably w
 
 ## 15. Current Development Priority
 
-The immediate technical priority is the Data & AI workstream.
+M0–M4 and M7 are complete (see the Milestone Overview table and `CLAUDE.md`'s ownership section for the authoritative, frequently-updated status). The M4 vertical slice that used to be tracked here — provider contract → client integration → quote → tests → historical data → asset profiles → mock provider → MCP integration — is done; see ADR 003 for how it ended up consolidated with the M3 MCP work.
 
-The current sequence is:
-
-```text
-1. MarketDataProvider contract
-2. TwelveDataProvider
-3. TwelveDataClient integration
-4. getQuote()
-5. Tests
-6. Historical market data
-7. Asset profiles
-8. Mock provider
-9. MarketDataService
-10. MCP integration
-11. AI-agent integration
-```
-
-The implementation should prioritize a working vertical slice over prematurely implementing every planned capability.
+The current priority is AI-agent integration (M5) and financial education (M6), building on the completed MCP server and market-data layers.
 
 ---
 

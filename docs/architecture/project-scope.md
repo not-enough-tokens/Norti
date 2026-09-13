@@ -223,7 +223,7 @@ The MVP is considered technically successful when:
 1. The Laravel application runs successfully.
 2. Core financial entities are represented.
 3. Financial capabilities are implemented through services.
-4. Market data can be retrieved through `MarketDataProvider`.
+4. Market data can be retrieved through `MarketDataProviderContract`.
 5. Twelve Data can be used as the initial provider.
 6. MCP tools expose selected financial capabilities.
 7. An AI agent can discover and invoke those tools.
