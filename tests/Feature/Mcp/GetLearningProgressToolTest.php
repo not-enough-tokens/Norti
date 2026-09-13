@@ -48,6 +48,7 @@ class GetLearningProgressToolTest extends TestCase
                 ->where('props.completed_topics', 1)
                 ->where('props.pending_topics', 1)
                 ->where('props.completion_percentage', 50)
+                ->where('props.category_gaps', ['investing'])
                 ->etc());
     }
 
@@ -60,6 +61,7 @@ class GetLearningProgressToolTest extends TestCase
             ->assertOk()
             ->assertStructuredContent(fn ($json) => $json->where('props.total_topics', 0)
                 ->where('props.completion_percentage', 0)
+                ->where('props.category_gaps', [])
                 ->etc());
     }
 

@@ -49,6 +49,7 @@ class GetLearningPathToolTest extends TestCase
                 ->where('props.topics.1.id', $pending->id)
                 ->where('props.topics.1.is_completed', false)
                 ->where('props.recommended_topic.id', $pending->id)
+                ->where('props.recommended_topic.recommended_reason', 'default')
                 ->etc());
     }
 

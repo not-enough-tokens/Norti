@@ -51,7 +51,7 @@ class FinancialEducationService
             $topic = $incomplete->firstWhere('slug', 'ahorro-vs-inversion');
 
             if ($topic) {
-                return $topic;
+                return $this->withRecommendationReason($topic, 'no_goals');
             }
         }
 
@@ -59,7 +59,7 @@ class FinancialEducationService
             $topic = $incomplete->firstWhere('slug', 'diversificacion');
 
             if ($topic) {
-                return $topic;
+                return $this->withRecommendationReason($topic, 'concentrated_portfolio');
             }
         }
 
@@ -75,10 +75,35 @@ class FinancialEducationService
             $topic = $incomplete->firstWhere('slug', 'riesgo-de-inversion');
 
             if ($topic) {
-                return $topic;
+                return $this->withRecommendationReason($topic, 'conservative_profile_with_stocks');
             }
         }
 
-        return $incomplete->first();
+        return $this->withRecommendationReason($incomplete->first(), 'default');
+    }
+
+    private function withRecommendationReason(EducationalTopic $topic, string $reason): EducationalTopic
+    {
+        $topic->recommended_reason = $reason;
+
+        return $topic;
+    }
+
+    /**
+     * Categorías donde el usuario no tiene ningún tema completado -- la
+     * versión simple de "knowledge gaps": no es un algoritmo general, solo
+     * agrupa la ruta de aprendizaje por categoría y reporta las que están en
+     * cero.
+     *
+     * @return list<string>
+     */
+    public function getCategoryGaps(User $user): array
+    {
+        return $this->getLearningPath($user)
+            ->groupBy('category')
+            ->reject(fn (Collection $topics) => $topics->contains('is_completed', true))
+            ->keys()
+            ->values()
+            ->all();
     }
 }
