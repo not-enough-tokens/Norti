@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\EducationalTopicController;
+use App\Http\Controllers\McpTokenController;
 use App\Models\Asset;
 use App\Models\FinancialProfile;
 use App\Models\Holding;
@@ -17,6 +18,10 @@ Route::get('/education', [EducationalTopicController::class, 'index'])
 
 Route::get('/education/{educationalTopic}', [EducationalTopicController::class, 'show'])
     ->name('education.show');
+
+Route::post('/mcp/token', [McpTokenController::class, 'store'])
+    ->middleware('auth')
+    ->name('mcp.token.issue');
 
 if (app()->environment('local')) {
     Route::get('/mcp-test', fn () => view('debug.mcp-tester'))->name('mcp.debug-tester');

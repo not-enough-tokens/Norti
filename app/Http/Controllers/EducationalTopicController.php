@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\EducationalTopic;
 use App\Models\User;
-use App\Services\FinancialEducationService;
 use App\Services\FinancialEducationIntegrationService;
+use App\Services\FinancialEducationService;
 
 class EducationalTopicController extends Controller
 {
@@ -13,7 +13,7 @@ class EducationalTopicController extends Controller
         FinancialEducationService $service,
         FinancialEducationIntegrationService $integrationService
     ) {
-        $user = \App\Models\User::first();
+        $user = User::first();
 
         $learningPath = $service->getLearningPath($user);
 
