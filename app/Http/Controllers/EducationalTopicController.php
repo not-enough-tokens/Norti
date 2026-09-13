@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\EducationalTopic;
+use App\Models\User;
 use App\Services\FinancialEducationService;
 use App\Services\FinancialEducationIntegrationService;
 

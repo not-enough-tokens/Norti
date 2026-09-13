@@ -2,8 +2,14 @@
 
 namespace App\Providers;
 
+use App\Services\MarketData\MarketDataProvider;
+use App\Services\MarketData\TwelveDataProvider;
 use App\Services\TwelveData\TwelveDataClient;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -16,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
             apiKey: (string) config('services.twelvedata.key'),
             baseUrl: (string) config('services.twelvedata.base_url'),
         ));
+
+        $this->app->bind(MarketDataProvider::class, TwelveDataProvider::class);
     }
 
     /**
@@ -23,6 +31,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Passport::tokensCan([
+            'mcp:read' => 'Leer datos financieros del usuario',
+            'mcp:simulate' => 'Ejecutar simulaciones de inversión',
+        ]);
+
+        RateLimiter::for('mcp', fn (Request $request): Limit => Limit::perMinute(60)->by(
+            $request->user()?->id ?: $request->ip()
+        ));
     }
 }

@@ -35,6 +35,9 @@ jobs:
       - name: Generate application key
         run: php artisan key:generate
 
+      - name: Generate Passport keys
+        run: php artisan passport:keys
+
       - name: Check code style (Pint)
         run: vendor/bin/pint --test
 
