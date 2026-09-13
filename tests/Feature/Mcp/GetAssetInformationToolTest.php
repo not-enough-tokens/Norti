@@ -42,6 +42,30 @@ class GetAssetInformationToolTest extends TestCase
                 ->etc());
     }
 
+    /**
+     * El catálogo guarda tickers en mayúsculas y el `=` de Postgres distingue
+     * mayúsculas, así que un símbolo en minúsculas devolvía local_asset => null
+     * aunque el Asset sí estuviera sembrado.
+     */
+    public function test_finds_the_local_asset_regardless_of_symbol_case(): void
+    {
+        Http::fake([
+            'api.twelvedata.com/quote*' => Http::response(['symbol' => 'AAPL', 'close' => '150.00']),
+            'api.twelvedata.com/profile*' => Http::response(['symbol' => 'AAPL', 'sector' => 'Technology']),
+        ]);
+
+        Asset::factory()->create(['symbol' => 'AAPL', 'name' => 'Apple Inc', 'asset_type' => 'accion']);
+
+        $user = User::factory()->create();
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(GetAssetInformation::class, ['symbol' => 'aapl'])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.symbol', 'AAPL')
+                ->where('props.local_asset.name', 'Apple Inc')
+                ->etc());
+    }
+
     public function test_still_returns_market_data_when_the_asset_is_not_seeded_locally(): void
     {
         Http::fake([

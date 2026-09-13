@@ -102,7 +102,7 @@ Tests: usar los helpers de `Laravel\Mcp\Server\Testing\*` para cubrir — cada t
 
 ## Modelo de dominio (M1, referencia — dueño Integrante A)
 
-`User`, `FinancialProfile` (ingresos, gastos, ahorro, tolerancia al riesgo, horizonte de inversión), `FinancialGoal` (nombre, cantidad objetivo, cantidad actual, fecha objetivo, prioridad, categoría), `Portfolio`, `Holding` (posición — separa el activo de que el usuario lo mantenga), `Asset` (acciones, ETFs, renta fija, efectivo), perfil de riesgo enum (Conservative/Moderate/Aggressive). M3 solo necesita el *shape* de la respuesta de estos Services, no su fórmula interna (algoritmo de riesgo, métricas de diversificación y metodología de simulación son decisión de Integrante A/M2).
+`User`, `FinancialProfile` (ingresos, gastos, ahorro, tolerancia al riesgo, horizonte de inversión), `FinancialGoal` (`name`, `target_amount`, `current_amount`, `target_day`, `goal_type` — no hay columna de prioridad), `Portfolio`, `Holding` (posición — separa el activo de que el usuario lo mantenga), `Asset` (acciones, ETFs, renta fija, efectivo), perfil de riesgo enum (Conservative/Moderate/Aggressive). M3 solo necesita el *shape* de la respuesta de estos Services, no su fórmula interna (algoritmo de riesgo, métricas de diversificación y metodología de simulación son decisión de Integrante A/M2).
 
 ## Roadmap y ownership (M0–M8)
 
