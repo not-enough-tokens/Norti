@@ -38,6 +38,7 @@ class ChatController extends Controller
     public function index(Request $request): View
     {
         return view('chat.index', [
+            'user' => $request->user(),
             'messages' => $request->session()->get(self::SESSION_KEY, []),
         ]);
     }

@@ -7,80 +7,72 @@
     ];
 @endphp
 
-<x-layouts.base :title="$topic->title" class="bg-bg-canvas">
-    <div class="flex min-h-screen gap-6 p-6">
-        <x-shell.sidebar active="educacion" />
+<x-layouts.app :user="$user" active="educacion" :title="$topic->title">
+    <div class="mx-auto min-h-0 w-full max-w-[560px] flex-1 overflow-y-auto">
+        <div class="flex flex-col gap-4 pb-10">
+            <a href="{{ route('education.index') }}" class="mt-6 self-start text-sm leading-5 font-semibold text-text-muted transition hover:text-text-primary">
+                ← Volver a educación
+            </a>
 
-        <div class="flex flex-1 flex-col gap-6">
-            <header class="flex items-center justify-between">
-                <a href="{{ route('education.index') }}" class="text-sm leading-5 font-semibold text-text-muted transition hover:text-text-primary">
-                    ← Volver a educación
-                </a>
+            @if (session('status'))
+                <x-alert :title="session('status')" />
+            @endif
 
-                <x-shell.topbar :user="$user" />
-            </header>
+            <div class="flex flex-col gap-4 rounded-2xl border border-border-default bg-bg-surface p-6 shadow-panel">
+                <div class="flex items-center gap-2">
+                    <span class="size-2 bg-action-primary"></span>
+                    <p class="font-display text-[11px] leading-4 font-bold tracking-[0.12em] text-text-brand uppercase">
+                        Educación financiera · {{ $topic->categoryLabel() }}
+                    </p>
+                </div>
 
-            <main class="mx-auto w-full max-w-[560px] pb-10">
-                @if (session('status'))
-                    <x-alert :title="session('status')" class="mb-6" />
+                <div class="flex flex-col gap-2">
+                    <h1 class="font-display text-[22px] leading-[30px] font-semibold text-text-primary">{{ $topic->title }}</h1>
+                    <p class="text-sm leading-5 text-text-muted">{{ $topic->description }}</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="flex items-center gap-1 text-xs leading-4 text-text-muted">
+                        <x-icon.clock class="size-3.5" />
+                        {{ $topic->estimated_minutes }} min
+                    </span>
+
+                    <span class="rounded-full bg-bg-subtle px-3 py-1 text-xs leading-4 font-medium text-text-body">
+                        {{ $topic->difficultyLabel() }}
+                    </span>
+
+                    @if ($isCompleted)
+                        <span class="rounded-full bg-feedback-positive-bg px-3 py-1 text-xs leading-4 font-medium text-feedback-positive-text">
+                            Completado
+                        </span>
+                    @endif
+                </div>
+
+                @if ($recommendedReason)
+                    <x-alert title="Recomendado para ti">{{ $reasonMessages[$recommendedReason] ?? $reasonMessages['default'] }}</x-alert>
                 @endif
 
-                <div class="flex flex-col gap-4 rounded-2xl border border-border-default bg-bg-surface p-6 shadow-panel">
-                    <div class="flex items-center gap-2">
-                        <span class="size-2 bg-action-primary"></span>
-                        <p class="font-display text-[11px] leading-4 font-bold tracking-[0.12em] text-text-brand uppercase">
-                            Educación financiera · {{ $topic->categoryLabel() }}
-                        </p>
-                    </div>
-
-                    <div class="flex flex-col gap-2">
-                        <h1 class="font-display text-[22px] leading-[30px] font-semibold text-text-primary">{{ $topic->title }}</h1>
-                        <p class="text-sm leading-5 text-text-muted">{{ $topic->description }}</p>
-                    </div>
-
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span class="flex items-center gap-1 text-xs leading-4 text-text-muted">
-                            <x-icon.clock class="size-3.5" />
-                            {{ $topic->estimated_minutes }} min
-                        </span>
-
-                        <span class="rounded-full bg-bg-subtle px-3 py-1 text-xs leading-4 font-medium text-text-body">
-                            {{ $topic->difficultyLabel() }}
-                        </span>
-
-                        @if ($isCompleted)
-                            <span class="rounded-full bg-feedback-positive-bg px-3 py-1 text-xs leading-4 font-medium text-feedback-positive-text">
-                                Completado
-                            </span>
-                        @endif
-                    </div>
-
-                    @if ($recommendedReason)
-                        <x-alert title="Recomendado para ti">{{ $reasonMessages[$recommendedReason] ?? $reasonMessages['default'] }}</x-alert>
-                    @endif
-
-                    <div class="flex flex-col gap-2">
-                        <p class="text-sm leading-5 font-semibold text-text-primary">Contenido</p>
-                        <p class="text-sm leading-5 text-text-body">{{ $topic->content }}</p>
-                    </div>
-
-                    <div class="flex flex-wrap items-center gap-3">
-                        @unless ($isCompleted)
-                            <form method="POST" action="{{ route('education.complete', $topic) }}">
-                                @csrf
-                                <x-button class="w-full sm:w-auto">Marcar como completado</x-button>
-                            </form>
-                        @endunless
-
-                        <x-button variant="secondary" :href="route('onboarding.index', ['topic' => $topic->slug])" class="w-full sm:w-auto">
-                            {{ $isCompleted ? 'Repasar con el asistente' : 'Preguntar al asistente' }}
-                            <x-icon.chevron-right class="size-4" />
-                        </x-button>
-                    </div>
-
-                    <p class="text-xs leading-4 text-text-muted">Contenido educativo · no es asesoría financiera</p>
+                <div class="flex flex-col gap-2">
+                    <p class="text-sm leading-5 font-semibold text-text-primary">Contenido</p>
+                    <p class="text-sm leading-5 text-text-body">{{ $topic->content }}</p>
                 </div>
-            </main>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    @unless ($isCompleted)
+                        <form method="POST" action="{{ route('education.complete', $topic) }}">
+                            @csrf
+                            <x-button class="w-full sm:w-auto">Marcar como completado</x-button>
+                        </form>
+                    @endunless
+
+                    <x-button variant="secondary" :href="route('onboarding.index', ['topic' => $topic->slug])" class="w-full sm:w-auto">
+                        {{ $isCompleted ? 'Repasar con el asistente' : 'Preguntar al asistente' }}
+                        <x-icon.chevron-right class="size-4" />
+                    </x-button>
+                </div>
+
+                <p class="text-xs leading-4 text-text-muted">Contenido educativo · no es asesoría financiera</p>
+            </div>
         </div>
     </div>
-</x-layouts.base>
+</x-layouts.app>

@@ -57,6 +57,30 @@ class OnboardingControllerTest extends TestCase
         $response->assertSee('¿Cuánto es lo que ganas al mes?');
     }
 
+    /**
+     * Mientras el perfil no esté completo, la sidebar no se muestra -- no
+     * hay forma de saltarse las preguntas fijas navegando a Educación o al
+     * chat real.
+     */
+    public function test_the_sidebar_is_hidden_while_the_fixed_questions_are_in_progress(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/onboarding');
+
+        $response->assertDontSee('aria-label="Navegación principal"', false);
+    }
+
+    public function test_the_sidebar_appears_once_the_profile_is_complete(): void
+    {
+        $user = User::factory()->create();
+        FinancialProfile::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)->get('/onboarding');
+
+        $response->assertSee('aria-label="Navegación principal"', false);
+    }
+
     public function test_full_conversation_creates_a_financial_profile(): void
     {
         $user = User::factory()->create();
