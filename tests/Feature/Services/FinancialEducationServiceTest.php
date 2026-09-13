@@ -81,6 +81,7 @@ class FinancialEducationServiceTest extends TestCase
         $recommended = app(FinancialEducationService::class)->getRecommendedTopic($user);
 
         $this->assertSame('ahorro-vs-inversion', $recommended->slug);
+        $this->assertSame('no_goals', $recommended->recommended_reason);
     }
 
     public function test_recommends_diversificacion_when_the_portfolio_holds_a_single_asset(): void
@@ -97,6 +98,7 @@ class FinancialEducationServiceTest extends TestCase
         $recommended = app(FinancialEducationService::class)->getRecommendedTopic($user);
 
         $this->assertSame('diversificacion', $recommended->slug);
+        $this->assertSame('concentrated_portfolio', $recommended->recommended_reason);
     }
 
     public function test_recommends_riesgo_de_inversion_for_a_conservative_profile_holding_stocks(): void
@@ -116,6 +118,7 @@ class FinancialEducationServiceTest extends TestCase
         $recommended = app(FinancialEducationService::class)->getRecommendedTopic($user);
 
         $this->assertSame('riesgo-de-inversion', $recommended->slug);
+        $this->assertSame('conservative_profile_with_stocks', $recommended->recommended_reason);
     }
 
     public function test_falls_back_to_the_first_incomplete_topic_when_no_rule_applies(): void
@@ -135,6 +138,7 @@ class FinancialEducationServiceTest extends TestCase
         $recommended = app(FinancialEducationService::class)->getRecommendedTopic($user);
 
         $this->assertSame('ahorro-vs-inversion', $recommended->slug);
+        $this->assertSame('default', $recommended->recommended_reason);
     }
 
     public function test_no_goals_rule_takes_priority_over_diversification_rule(): void
@@ -165,5 +169,45 @@ class FinancialEducationServiceTest extends TestCase
         $recommended = app(FinancialEducationService::class)->getRecommendedTopic($user);
 
         $this->assertNotSame('ahorro-vs-inversion', $recommended->slug);
+    }
+
+    public function test_category_gaps_lists_every_category_when_nothing_is_completed(): void
+    {
+        $this->seedTopics();
+
+        $user = User::factory()->create();
+
+        $gaps = app(FinancialEducationService::class)->getCategoryGaps($user);
+
+        $this->assertEqualsCanonicalizing(['personal_finance', 'risk', 'basics'], $gaps);
+    }
+
+    public function test_category_gaps_excludes_a_category_with_at_least_one_completed_topic(): void
+    {
+        $this->seedTopics();
+
+        $user = User::factory()->create();
+        $user->educationalTopics()->attach(
+            EducationalTopic::where('slug', 'diversificacion')->sole(),
+            ['completed_at' => now()]
+        );
+
+        $gaps = app(FinancialEducationService::class)->getCategoryGaps($user);
+
+        // 'riesgo-de-inversion' is also 'risk' but is not completed -- one
+        // completed topic in the category is enough to close the gap.
+        $this->assertEqualsCanonicalizing(['personal_finance', 'basics'], $gaps);
+    }
+
+    public function test_category_gaps_is_empty_when_everything_is_completed(): void
+    {
+        $this->seedTopics();
+
+        $user = User::factory()->create();
+        $user->educationalTopics()->attach(EducationalTopic::pluck('id'), ['completed_at' => now()]);
+
+        $gaps = app(FinancialEducationService::class)->getCategoryGaps($user);
+
+        $this->assertSame([], $gaps);
     }
 }

@@ -12,7 +12,7 @@ use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
 
 #[Name('get_learning_progress')]
-#[Description('Obtiene el progreso del usuario en su ruta de educación financiera.')]
+#[Description('Obtiene el progreso del usuario en su ruta de educación financiera, incluyendo las categorías de contenido en las que todavía no ha completado ningún tema.')]
 class GetLearningProgress extends Tool
 {
     use LogsToolInvocation;
@@ -63,6 +63,7 @@ class GetLearningProgress extends Tool
                 'completed_topics' => $completed,
                 'pending_topics' => $pending,
                 'completion_percentage' => $percentage,
+                'category_gaps' => $this->education->getCategoryGaps($user),
             ],
         ]);
     }

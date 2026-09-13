@@ -20,7 +20,7 @@ The milestones are designed to minimize coupling between components and allow in
 | M3 | MCP Server | How can external agents use it? | Completed |
 | M4 | External Market Data | Where does market data come from? | Completed |
 | M5 | AI / Agents | Who uses these capabilities? | Completed |
-| M6 | Financial Education | How does the system create user value? | In Progress |
+| M6 | Financial Education | How does the system create user value? | Completed |
 | M7 | Security & Hardening | How is the system protected? | Completed |
 | M8 | Product & Demo | How is the complete solution demonstrated? | Planned |
 
@@ -294,8 +294,8 @@ The system should not only provide financial information or analysis, but also h
 - learning paths ✅ — `FinancialEducationService::getLearningPath()` returns every topic ordered by `id` with an `is_completed` flag; still a fixed linear list, but `get_learning_path` now also surfaces a prioritized `recommended_topic` (see below) on top of it.
 - educational progress ✅ — readable (`educational_topic_user.completed_at`, surfaced as `is_completed`, also via `get_learning_progress`) and now **writable** through the `mark_topic_completed` MCP tool (requires the `mcp:write` scope, granted by every real token-issuing path: `/mcp/token` and the three M5 demo commands).
 - personalized topic recommendations ✅ — `FinancialEducationService::getRecommendedTopic()` connects `FinancialEducationIntegrationService::getFinancialContext()` (profile + goals + portfolios; previously dead code) to a small rule set, evaluated in order against the user's *incomplete* topics: no `FinancialGoal` records → "Ahorro vs inversión"; portfolio concentrated in a single asset → "Diversificación"; conservative `risk_tolerance` (normalized via `RiskAnalysisService::suggestRiskProfile()`, never the raw column) while holding stocks → "Riesgo de inversión"; otherwise the first incomplete topic. Rule-based, not ML -- deliberately simple given the 5-topic seeded catalog. Exposed only through `get_learning_path`'s `recommended_topic` field; no Blade/A2UI surface yet.
-- contextual explanations ⚠️ partial — the recommendation picks a topic based on financial context, but doesn't generate a natural-language explanation of *why*; narrating that is left to the LLM/agent layer once A2UI exists.
-- identification of relevant knowledge gaps ❌ — the 3 rules above are hand-picked heuristics tied to 3 specific topics by slug, not a general gap-detection algorithm.
+- contextual explanations ✅ — `getRecommendedTopic()` tags the chosen topic with `recommended_reason` (`no_goals`, `concentrated_portfolio`, `conservative_profile_with_stocks`, or `default`), returned in `get_learning_path`. The backend only supplies this machine-readable signal, never a pre-written sentence -- narrating it in natural language is deliberately left to the LLM/agent layer, matching the deterministic/generative split already documented in `docs/architecture/system-architecture.md` and ADR 004.
+- identification of relevant knowledge gaps ✅ (simple) — `FinancialEducationService::getCategoryGaps()` reports which topic categories the user has zero completed topics in, exposed via `get_learning_progress`'s `category_gaps`. Deliberately simple: groups the existing catalog by `category` and checks for zero completions, not a general algorithm. The 3 recommendation rules above are still hand-picked heuristics tied to specific topics by slug, not category-driven — left as-is, out of scope for this pass.
 
 The four MCP tools (`get_educational_topic`, `get_learning_path`, `get_learning_progress`, `mark_topic_completed`, from `feature/education-mcp`) and the recommendation engine above are all merged into `master`.
 
@@ -325,7 +325,7 @@ The prototype demonstrates a clear connection between financial intelligence and
 
 ### Status
 
-**In Progress** — topics, learning path, progress (read/write), and financial-context recommendations are all built and exposed over MCP (see Capabilities above). What's left: contextual explanations are only partial, general knowledge-gap detection doesn't exist, and none of this has a Blade/A2UI surface for a human using the app directly (MCP-only so far).
+**Completed** — topics, learning path, progress (read/write), financial-context recommendations with a machine-readable reason, and simple category-gap detection are all built, tested, and exposed over MCP (see Capabilities above). Deliberately left out of this milestone: refactoring the 3 recommendation rules from slug-based to category-based, a Blade/A2UI surface for a human using the app directly (MCP-only so far -- there's no A2UI rendering infrastructure anywhere in the project yet, for any milestone), and wiring onboarding to redirect into education.
 
 ---
 

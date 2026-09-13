@@ -12,7 +12,7 @@ use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
 
 #[Name('get_learning_path')]
-#[Description('Obtiene la ruta de aprendizaje financiero del usuario autenticado, los temas disponibles con su estado de progreso, y el tema recomendado según su situación financiera actual.')]
+#[Description('Obtiene la ruta de aprendizaje financiero del usuario autenticado, los temas disponibles con su estado de progreso, y el tema recomendado según su situación financiera actual (con recommended_reason indicando la señal que lo motivó, para que el agente explique el porqué).')]
 class GetLearningPath extends Tool
 {
     use LogsToolInvocation;
