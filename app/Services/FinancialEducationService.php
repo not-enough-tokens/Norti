@@ -90,6 +90,41 @@ class FinancialEducationService
     }
 
     /**
+     * A2UI contract gap 12: `GetLearningProgress` calculaba estos conteos
+     * dentro de la tool -- CLAUDE.md pide que las tools deleguen a un
+     * Service, nunca contengan lógica financiera por sí mismas.
+     *
+     * @return array{total_topics: int, completed_topics: int, pending_topics: int, completion_percentage: int}
+     */
+    public function getProgressSummary(User $user): array
+    {
+        $learningPath = $this->getLearningPath($user);
+
+        $total = $learningPath->count();
+        $completed = $learningPath->where('is_completed', true)->count();
+
+        return [
+            'total_topics' => $total,
+            'completed_topics' => $completed,
+            'pending_topics' => $total - $completed,
+            'completion_percentage' => $total > 0 ? (int) round(($completed / $total) * 100) : 0,
+        ];
+    }
+
+    /**
+     * A2UI contract gap 11: `get_educational_topic` no traía esta señal, así
+     * que el componente no podía ocultar «Marcar como completado» para un
+     * tema que el usuario ya completó.
+     */
+    public function isTopicCompleted(User $user, int $topicId): bool
+    {
+        return $user->educationalTopics()
+            ->wherePivotNotNull('completed_at')
+            ->where('educational_topics.id', $topicId)
+            ->exists();
+    }
+
+    /**
      * Categorías donde el usuario no tiene ningún tema completado -- la
      * versión simple de "knowledge gaps": no es un algoritmo general, solo
      * agrupa la ruta de aprendizaje por categoría y reporta las que están en

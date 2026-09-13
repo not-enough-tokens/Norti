@@ -27,30 +27,8 @@ class GetLearningProgress extends Tool
         $user = $request->user();
 
         if (! $user?->tokenCan('mcp:read')) {
-            $this->logToolCall(
-                $request,
-                success: false,
-                resultSummary: 'scope_denied'
-            );
-
-            return Response::error(
-                'No autorizado: se requiere el scope mcp:read.'
-            );
+            return $this->errorResponse($request, 'scope_denied', 'No autorizado: se requiere el scope mcp:read.');
         }
-
-        $learningPath = $this->education->getLearningPath($user);
-
-        $total = $learningPath->count();
-
-        $completed = $learningPath
-            ->where('is_completed', true)
-            ->count();
-
-        $pending = $total - $completed;
-
-        $percentage = $total > 0
-            ? round(($completed / $total) * 100)
-            : 0;
 
         $this->logToolCall(
             $request,
@@ -60,10 +38,7 @@ class GetLearningProgress extends Tool
         return Response::structured([
             'component' => 'learning_progress',
             'props' => [
-                'total_topics' => $total,
-                'completed_topics' => $completed,
-                'pending_topics' => $pending,
-                'completion_percentage' => $percentage,
+                ...$this->education->getProgressSummary($user),
                 'category_gaps' => $this->education->getCategoryGaps($user),
                 'actions' => [
                     ToolAction::make('continue_learning', 'Continuar con el siguiente tema', 'get_learning_path'),

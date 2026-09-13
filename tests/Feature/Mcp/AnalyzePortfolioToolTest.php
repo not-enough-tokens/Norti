@@ -249,4 +249,27 @@ class AnalyzePortfolioToolTest extends TestCase
         BanorteServer::tool(AnalyzePortfolio::class, [])
             ->assertHasErrors(['No autorizado: se requiere el scope mcp:read.']);
     }
+
+    /**
+     * Gap 9: Response::error() solo tomaba texto plano. errorResponse()
+     * (LogsToolInvocation) lo estructura como JSON {code, message} sin
+     * cambiar el mecanismo de error de laravel/mcp -- assertHasErrors()
+     * sigue funcionando porque hace str_contains() contra el texto.
+     */
+    public function test_the_scope_denied_error_is_structured_with_a_code(): void
+    {
+        $user = User::factory()->create();
+        Passport::actingAs($user, []);
+
+        BanorteServer::tool(AnalyzePortfolio::class, [])
+            ->assertHasErrors([
+                '"code":"scope_denied"',
+                '"message":"No autorizado: se requiere el scope mcp:read."',
+            ]);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'tool_name' => 'analyze_portfolio',
+            'result_summary' => 'scope_denied',
+        ]);
+    }
 }

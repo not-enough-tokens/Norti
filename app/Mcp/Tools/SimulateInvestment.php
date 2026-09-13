@@ -29,9 +29,7 @@ class SimulateInvestment extends Tool
         $user = $request->user();
 
         if (! $user?->tokenCan('mcp:simulate')) {
-            $this->logToolCall($request, success: false, resultSummary: 'scope_denied');
-
-            return Response::error('No autorizado: se requiere el scope mcp:simulate.');
+            return $this->errorResponse($request, 'scope_denied', 'No autorizado: se requiere el scope mcp:simulate.');
         }
 
         $validated = $this->validateOrLog($request, [

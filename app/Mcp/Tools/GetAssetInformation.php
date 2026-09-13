@@ -31,9 +31,7 @@ class GetAssetInformation extends Tool
         $user = $request->user();
 
         if (! $user?->tokenCan('mcp:read')) {
-            $this->logToolCall($request, success: false, resultSummary: 'scope_denied');
-
-            return Response::error('No autorizado: se requiere el scope mcp:read.');
+            return $this->errorResponse($request, 'scope_denied', 'No autorizado: se requiere el scope mcp:read.');
         }
 
         $validated = $this->validateOrLog($request, [
@@ -51,9 +49,12 @@ class GetAssetInformation extends Tool
             $quote = $this->marketData->quote($symbol);
             $profile = $this->marketData->profile($symbol);
         } catch (MarketDataUnavailableException $exception) {
-            $this->logToolCall($request, success: false, safeInput: ['symbol' => $symbol], resultSummary: 'market_data_unavailable');
-
-            return Response::error("No se pudo obtener información de mercado para {$symbol}: {$exception->getMessage()}");
+            return $this->errorResponse(
+                $request,
+                'market_data_unavailable',
+                "No se pudo obtener información de mercado para {$symbol}: {$exception->getMessage()}",
+                ['symbol' => $symbol],
+            );
         }
 
         $this->logToolCall($request, success: true, safeInput: ['symbol' => $symbol]);
