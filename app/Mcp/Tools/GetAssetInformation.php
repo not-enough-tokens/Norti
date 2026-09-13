@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\LogsToolInvocation;
+use App\Mcp\Support\ChartData;
 use App\Mcp\Support\ToolAction;
 use App\Models\Asset;
 use App\Services\Contracts\Exceptions\MarketDataUnavailableException;
@@ -69,6 +70,7 @@ class GetAssetInformation extends Tool
                 ] : null,
                 'quote' => $quote,
                 'profile' => $profile,
+                'chart' => $this->priceChart($symbol, $quote['currency'] ?? null),
                 // simulate_investment no toma un símbolo -- amount/months/
                 // risk_profile los completa el agente por conversación; el
                 // label es lo que ata la acción a este activo.
@@ -81,6 +83,52 @@ class GetAssetInformation extends Tool
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Serie de cierres diarios para la línea del `asset_info_card` (A2UI
+     * contract gap 15). Si el proveedor falla (cuota, símbolo sin historial),
+     * la ficha se sigue mostrando sin gráfica en vez de fallar por completo --
+     * ya tenemos quote/profile, que son lo esencial de la respuesta.
+     */
+    private function priceChart(string $symbol, ?string $currency): ?array
+    {
+        try {
+            $bars = $this->marketData->timeSeries($symbol, '1day', ['outputsize' => 30]);
+        } catch (MarketDataUnavailableException) {
+            return null;
+        }
+
+        // Twelve Data (y el Mock) entregan las barras más recientes primero;
+        // la línea se lee de izquierda a derecha en orden cronológico.
+        $points = collect($bars)
+            ->filter(fn (array $bar): bool => isset($bar['datetime'], $bar['close']))
+            ->sortBy('datetime')
+            ->values();
+
+        if ($points->count() < 2) {
+            return null;
+        }
+
+        $closes = $points->pluck('close')->all();
+        $min = min($closes);
+        $max = max($closes);
+
+        return ChartData::make(
+            type: 'line',
+            data: $points->map(fn (array $bar): array => ['x' => $bar['datetime'], 'y' => $bar['close']])->all(),
+            unit: 'currency',
+            currency: $currency,
+            xAxis: [
+                'type' => 'time',
+                'ticks' => [
+                    $points->first()['datetime'],
+                    $points->get((int) floor($points->count() / 2))['datetime'],
+                    $points->last()['datetime'],
+                ],
+            ],
+            yAxis: ['domain' => [$min, $max], 'ticks' => [$min, round(($min + $max) / 2, 2), $max]],
+        );
     }
 
     /**

@@ -50,6 +50,52 @@ class GetAssetInformationToolTest extends TestCase
                 ->etc());
     }
 
+    public function test_includes_a_line_chart_with_the_price_history_in_chronological_order(): void
+    {
+        Http::fake([
+            'api.twelvedata.com/quote*' => Http::response(['symbol' => 'AAPL', 'close' => '150.00', 'currency' => 'USD']),
+            'api.twelvedata.com/profile*' => Http::response(['symbol' => 'AAPL', 'sector' => 'Technology']),
+            // Twelve Data returns the most recent bar first.
+            'api.twelvedata.com/time_series*' => Http::response(['values' => [
+                ['datetime' => '2024-01-03', 'close' => '152.00'],
+                ['datetime' => '2024-01-02', 'close' => '151.00'],
+                ['datetime' => '2024-01-01', 'close' => '149.00'],
+            ]]),
+        ]);
+
+        $user = User::factory()->create();
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(GetAssetInformation::class, ['symbol' => 'AAPL'])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.chart.type', 'line')
+                ->where('props.chart.currency', 'USD')
+                ->where('props.chart.data', [
+                    ['x' => '2024-01-01', 'y' => 149],
+                    ['x' => '2024-01-02', 'y' => 151],
+                    ['x' => '2024-01-03', 'y' => 152],
+                ])
+                ->etc());
+    }
+
+    public function test_omits_the_chart_when_the_price_history_is_unavailable(): void
+    {
+        Http::fake([
+            'api.twelvedata.com/quote*' => Http::response(['symbol' => 'AAPL', 'close' => '150.00']),
+            'api.twelvedata.com/profile*' => Http::response(['symbol' => 'AAPL', 'sector' => 'Technology']),
+            'api.twelvedata.com/time_series*' => Http::response(['code' => 429, 'message' => 'quota exceeded', 'status' => 'error'], 429),
+        ]);
+
+        $user = User::factory()->create();
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(GetAssetInformation::class, ['symbol' => 'AAPL'])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->where('props.chart', null)
+                ->where('props.quote.close', '150.00')
+                ->etc());
+    }
+
     /**
      * El catálogo guarda tickers en mayúsculas y el `=` de Postgres distingue
      * mayúsculas, así que un símbolo en minúsculas devolvía local_asset => null

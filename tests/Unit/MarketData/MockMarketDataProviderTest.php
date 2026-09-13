@@ -14,6 +14,7 @@ class MockMarketDataProviderTest extends TestCase
         $quote = $provider->quote('AAPL');
 
         $this->assertSame('AAPL', $quote['symbol']);
+        $this->assertIsFloat($quote['percent_change']);
         $this->assertSame($quote, $provider->quote('AAPL'));
     }
 

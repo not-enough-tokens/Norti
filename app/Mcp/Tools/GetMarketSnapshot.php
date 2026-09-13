@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\LogsToolInvocation;
+use App\Mcp\Support\ChartData;
 use App\Mcp\Support\ToolAction;
 use App\Services\Contracts\Exceptions\MarketDataUnavailableException;
 use App\Services\Contracts\MarketDataProviderContract;
@@ -90,8 +91,43 @@ class GetMarketSnapshot extends Tool
 
         return Response::structured([
             'component' => 'market_snapshot_grid',
-            'props' => ['quotes' => $quotes],
+            'props' => ['quotes' => $quotes, 'chart' => $this->changeChart($quotes)],
         ]);
+    }
+
+    /**
+     * Columnas de `% change` del día (A2UI contract gap 16) -- `null` para un
+     * símbolo cuya cotización falló o que no trajo `percent_change`.
+     *
+     * @param  array<string, array<string, mixed>>  $quotes
+     */
+    private function changeChart(array $quotes): ?array
+    {
+        if ($quotes === []) {
+            return null;
+        }
+
+        $data = [];
+        foreach ($quotes as $symbol => $quote) {
+            $data[] = ['key' => $symbol, 'value' => $quote['percent_change'] ?? null];
+        }
+
+        $values = array_filter(array_column($data, 'value'), fn (?float $value): bool => $value !== null);
+
+        if ($values === []) {
+            return ChartData::make(type: 'column', data: $data, unit: 'percent');
+        }
+
+        // Dominio divergente y simétrico: un +1.2% y un -0.8% deben leerse a
+        // la misma escala visual desde el 0, no cada uno con su propio rango.
+        $bound = max(1.0, max(array_map('abs', $values)));
+
+        return ChartData::make(
+            type: 'column',
+            data: $data,
+            unit: 'percent',
+            yAxis: ['domain' => [-$bound, $bound], 'ticks' => [-$bound, 0, $bound]],
+        );
     }
 
     /**

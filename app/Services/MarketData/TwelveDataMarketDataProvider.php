@@ -22,7 +22,16 @@ class TwelveDataMarketDataProvider implements MarketDataProviderContract
 
     public function quote(string $symbol, array $parameters = []): array
     {
-        return $this->cached('quote', $symbol, $parameters, fn (): array => $this->call(fn (): array => $this->client->quote($symbol, $parameters)));
+        $quote = $this->cached('quote', $symbol, $parameters, fn (): array => $this->call(fn (): array => $this->client->quote($symbol, $parameters)));
+
+        // Twelve Data sends `percent_change` as a numeric string; the column
+        // chart in `market_snapshot_grid` needs a real float to plot (A2UI
+        // contract gap 16).
+        if (isset($quote['percent_change'])) {
+            $quote['percent_change'] = (float) $quote['percent_change'];
+        }
+
+        return $quote;
     }
 
     public function profile(string $symbol, array $parameters = []): array
@@ -35,19 +44,24 @@ class TwelveDataMarketDataProvider implements MarketDataProviderContract
      */
     public function timeSeries(string $symbol, string $interval, array $parameters = []): array
     {
-        $data = $this->call(fn (): array => $this->client->timeSeries($symbol, $interval, $parameters));
+        // Was uncached, unlike quote()/profile() -- the line chart in
+        // `get_asset_information` (A2UI contract gap 15) calls this on every
+        // request, which would burn the 8 req/min free-tier quota fast.
+        return $this->cached('timeSeries', $symbol, [...$parameters, 'interval' => $interval], function () use ($symbol, $interval, $parameters): array {
+            $data = $this->call(fn (): array => $this->client->timeSeries($symbol, $interval, $parameters));
 
-        return array_map(
-            fn (array $value): array => [
-                'datetime' => $value['datetime'] ?? null,
-                'open' => isset($value['open']) ? (float) $value['open'] : null,
-                'high' => isset($value['high']) ? (float) $value['high'] : null,
-                'low' => isset($value['low']) ? (float) $value['low'] : null,
-                'close' => isset($value['close']) ? (float) $value['close'] : null,
-                'volume' => isset($value['volume']) ? (int) $value['volume'] : null,
-            ],
-            $data['values'] ?? [],
-        );
+            return array_map(
+                fn (array $value): array => [
+                    'datetime' => $value['datetime'] ?? null,
+                    'open' => isset($value['open']) ? (float) $value['open'] : null,
+                    'high' => isset($value['high']) ? (float) $value['high'] : null,
+                    'low' => isset($value['low']) ? (float) $value['low'] : null,
+                    'close' => isset($value['close']) ? (float) $value['close'] : null,
+                    'volume' => isset($value['volume']) ? (int) $value['volume'] : null,
+                ],
+                $data['values'] ?? [],
+            );
+        });
     }
 
     /**
