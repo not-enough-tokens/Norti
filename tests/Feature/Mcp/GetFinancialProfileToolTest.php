@@ -67,7 +67,25 @@ class GetFinancialProfileToolTest extends TestCase
                 ->where('props.savings', 5000)
                 // Gap 18: ausente antes aunque ProfileService ya la calculaba.
                 ->where('props.monthly_savings_capacity', 5000)
+                ->where('props.chart.type', 'waterfall')
+                ->where('props.chart.data', [
+                    ['key' => 'monthly_income', 'kind' => 'total', 'value' => 20000, 'start' => 0, 'end' => 20000],
+                    ['key' => 'monthly_expenses', 'kind' => 'decrease', 'value' => -15000, 'start' => 20000, 'end' => 5000],
+                    ['key' => 'monthly_savings_capacity', 'kind' => 'total', 'value' => 5000, 'start' => 0, 'end' => 5000],
+                ])
                 ->etc());
+    }
+
+    public function test_omits_the_chart_in_the_summary_detail(): void
+    {
+        $user = User::factory()->create();
+        FinancialProfile::factory()->for($user)->create();
+
+        Passport::actingAs($user, ['mcp:read']);
+
+        BanorteServer::tool(GetFinancialProfile::class, [])
+            ->assertOk()
+            ->assertStructuredContent(fn ($json) => $json->missing('props.chart')->etc());
     }
 
     /**

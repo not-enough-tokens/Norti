@@ -331,25 +331,25 @@ Spacing y radius usan la escala por defecto de Tailwind 4 (`spacing/4` = `p-4`, 
 
 | # | Estado | Brecha | Afecta | Propuesta |
 |---|---|---|---|---|
-| 1 | Abierta | Ninguna tool devuelve `actions` ni existe endpoint que regrese la interacción al agente | todos | `props.actions[] { id, label, tool, params }` + endpoint de `user_action` (M5). **Crítico para la regla 3 del reto** |
+| 1 | **Resuelta** | Ninguna tool devuelve `actions` ni existe endpoint que regrese la interacción al agente | todos | `ToolAction::make()` -- las 10 tools de negocio (todas salvo `tool_error`) traen `props.actions[] { id, label, tool, params }`; el agente las ofrece como sugerencias, nunca las ejecuta solo |
 | 2 | **Resuelta** | No había «cambio real» | education | `mark_topic_completed` (`mcp:write`) escribe `completed_at` |
-| 3 | Abierta | `portfolio_summary` sin totales | portfolio | `totals` en `EloquentPortfolioService` |
-| 4 | Abierta | `risk_tolerance` crudo en el perfil | profile | Normalizar con `RiskAnalysisService::suggestRiskProfile()` |
+| 3 | **Resuelta** | `portfolio_summary` sin totales | portfolio | `EloquentPortfolioService` agrega `totals` por portafolio (cost_basis, market_value, unrealized_gain), convertido a la moneda base (ver brecha 8) y excluyendo holdings sin valuar |
+| 4 | **Resuelta** | `risk_tolerance` crudo en el perfil | profile | `EloquentFinancialProfileService` normaliza con `RiskAnalysisService::suggestRiskProfile()` antes de exponerlo |
 | 5 | Reemplazada | Quotes sin `percent_change` ni series | asset, snapshot | Se divide en las brechas 15 (series) y 16 (`percent_change`) |
 | 6 | Documentada | Unidades mixtas (allocation 0–100, score 0–1, tasa fracción) | risk, simulation | Helper de formato en Blade |
 | 7 | **Resuelta** | Progreso educativo requería contar en el front | education | `get_learning_progress` entrega los conteos (ver brecha 12) |
-| 8 | Abierta | La distribución suma USD y MXN sin conversión (el seed mezcla AAPL/MSFT en USD con CETES28 en MXN) | risk, gráficas | Normalizar a una moneda base en `RiskAnalysisServiceAdapter`; también afecta el eje X de la dispersión |
-| 9 | Abierta | `Response::error` solo trae texto | tool_error | Error estructurado `{ code, message }` con los mismos `result_summary` del audit log |
-| 10 | Abierta | `learning_path` ya trae `topics` y `recommended_topic`, pero siguen siendo modelos Eloquent crudos con `content` y timestamps | education | `props: { topics: [ { id, title, category, estimated_minutes, is_completed } ], recommended_topic: { id, title, recommended_reason } }` |
-| 11 | Abierta | `educational_topic` no trae `is_completed` | education | Incluirlo para poder mostrar el estado del tema |
-| 12 | Abierta | `GetLearningProgress` calcula conteos y porcentaje dentro de la tool | education | Mover a `FinancialEducationService` (las tools solo delegan, per `CLAUDE.md`) |
-| 13 | Abierta | Ninguna tool devuelve series para gráficas | todas las gráficas | `props.chart` (ver [contrato](#contrato-propschart-propuesto-brecha-13)) armado en el Service con un helper compartido; `null` si no aplica |
-| 14 | Abierta | `InvestmentSimulationServiceAdapter` descarta la serie de `project()` (solo usa `end()`) | simulation | Agrupar en ≤ 10 periodos `{ key, values: { principal, gain }, total }` |
-| 15 | Abierta | Ninguna tool expone `timeSeries()` y no tiene caché (cuota de 8 req/min) | asset | Serie de cierres en `get_asset_information` con caché como `quote()`; si falla, `chart: null` sin tumbar la ficha |
-| 16 | Abierta | `percent_change` llega como string crudo de Twelve Data y el Mock no lo trae | snapshot | Normalizar a float en `quote()` y agregarlo a `MockMarketDataProvider` |
-| 17 | Abierta | Holdings sin `unrealized_gain_pct` | portfolio | Calcularlo en `EloquentPortfolioService` solo para `valuation_source = market` |
-| 18 | Abierta | El perfil exacto no trae `monthly_savings_capacity` | profile | Exponer `ProfileService::monthlySavingsCapacity()` solo con `detail = exact`; el resumen sigue en categorías |
-| 19 | Abierta | No hay rendimiento esperado para un portafolio real, solo por perfil | risk | Decisión de M2: `expected_annual_return` por `asset_type` en `investment_rules`; mientras, «Tu portafolio» es una referencia en X |
+| 8 | **Resuelta** | La distribución suma USD y MXN sin conversión (el seed mezcla AAPL/MSFT en USD con CETES28 en MXN) | risk, gráficas | `App\Services\Support\CurrencyConverter` + `config/currency.php` -- `RiskAnalysisServiceAdapter` y `EloquentPortfolioService` convierten a una moneda base antes de sumar |
+| 9 | **Resuelta** | `Response::error` solo trae texto | tool_error | `LogsToolInvocation::errorResponse()` regresa `{ code, message }` como JSON dentro del mismo texto de error, sin romper `assertHasErrors()` (substring match) |
+| 10 | **Resuelta** | `learning_path` ya trae `topics` y `recommended_topic`, pero seguían siendo modelos Eloquent crudos con `content` y timestamps | education | `GetLearningPath` recorta a `{ topics: [ { id, title, category, estimated_minutes, is_completed, actions } ], recommended_topic: { id, title, recommended_reason } }` |
+| 11 | **Resuelta** | `educational_topic` no trae `is_completed` | education | `GetEducationalTopic` lo incluye vía `FinancialEducationService::isTopicCompleted()`; `mark_topic_completed` deja de ofrecerse como acción si ya está completado |
+| 12 | **Resuelta** | `GetLearningProgress` calculaba conteos y porcentaje dentro de la tool | education | Movido a `FinancialEducationService::getProgressSummary()` (las tools solo delegan, per `CLAUDE.md`) |
+| 13 | **Resuelta** | Ninguna tool devuelve series para gráficas | todas las gráficas | `App\Mcp\Support\ChartData` -- helper compartido para el shape `props.chart` (ver [contrato](#contrato-propschart-propuesto-brecha-13)), usado por las 6 gráficas del catálogo; `null` cuando no aplica |
+| 14 | **Resuelta** | `InvestmentSimulationServiceAdapter` descarta la serie de `project()` (solo usa `end()`) | simulation | `simulate()` agrupa la serie completa en ≤ 10 periodos `{ key, values: { principal, gain }, total }` (columnas apiladas) |
+| 15 | **Resuelta** | Ninguna tool expone `timeSeries()` y no tenía caché (cuota de 8 req/min) | asset | `get_asset_information` arma una línea de precios con `timeSeries()`, ahora cacheada igual que `quote()`; si el proveedor falla, `chart: null` sin tumbar la ficha |
+| 16 | **Resuelta** | `percent_change` llegaba como string crudo de Twelve Data y el Mock no lo traía | snapshot | Normalizado a float en `TwelveDataMarketDataProvider::quote()` y agregado a `MockMarketDataProvider`; `get_market_snapshot` arma la columna con `null` para símbolos fallidos |
+| 17 | **Resuelta** | Holdings sin `unrealized_gain_pct` | portfolio | `EloquentPortfolioService` lo calcula solo para `valuation_source = market`; el bar chart de `portfolio_summary` excluye efectivo/holdings sin valuar |
+| 18 | **Resuelta** | El perfil exacto no traía `monthly_savings_capacity` | profile | `EloquentFinancialProfileService` expone `ProfileService::monthlySavingsCapacity()` solo con `detail = exact`, más la cascada (`chart`) ingresos → gastos → capacidad de ahorro; el resumen sigue en categorías |
+| 19 | **Resuelta** (parcial) | No hay rendimiento esperado para un portafolio real, solo por perfil | risk | `analyze_portfolio` agrega una dispersión con los 3 perfiles calibrados (`investment_rules.php`); el rendimiento del portafolio real sigue bloqueado en una decisión de M2 (falta `expected_annual_return` por `asset_type`) -- mientras tanto `reference_x` usa el % en `accion` del portafolio como proxy sobre el mismo eje (ver `docs/development/a2ui-charts-todo.md`) |
 
 ## Decisiones
 

@@ -2,21 +2,21 @@
 
 Lo que falta para que las gráficas diseñadas en Figma (página [Charts](https://www.figma.com/design/XPC8ZTeOL8dKf8Nl8ZN3fS?node-id=58-10)) lleguen a la app. Reglas, contrato y brechas: [`docs/architecture/a2ui-components.md`](../architecture/a2ui-components.md#gráficas).
 
-**Estado:** diseño listo en Figma (6 gráficas integradas en su organismo) · contrato `props.chart` propuesto · backend y Blade sin empezar.
+**Estado:** diseño listo en Figma (6 gráficas integradas en su organismo) · contrato `props.chart` implementado y las 6 gráficas armadas en backend (PRs #35/#36/#38) · Blade sin empezar.
 
 ## 1. Backend — `props.chart`
 
 Regla: las series se arman en el Service. La tool solo delega.
 
-- [ ] **Brecha 13 · helper compartido** (M3) — p. ej. `app/Support/Charts/ChartBuilder.php`: dominio con holgura, marcas, orden y `excluded[]`. Test unitario del dominio (barras siempre desde 0).
-- [ ] **Brecha 14 · `simulation_result_card`** (M2 · Integrante A) — `InvestmentSimulationServiceAdapter::simulate()` agrupa la salida de `project()` en ≤ 10 periodos → `stacked_column`. Test: `principal + gain = total` y el último `total` = `projected_value`.
-- [ ] **Brecha 15 · `asset_info_card`** (M4 · Integrante C) — `GetAssetInformation` agrega la serie de cierres (`timeSeries($symbol, '1day', ['outputsize' => 22])`); cachear `timeSeries()` en `TwelveDataMarketDataProvider` como `quote()`. Si falla, `chart = null` y la ficha responde igual. Test con `MockMarketDataProvider`.
-- [ ] **Brecha 16 · `market_snapshot_grid`** (M4 · Integrante C) — normalizar `percent_change` a float en `quote()` y agregarlo al Mock → `column`.
-- [ ] **Brecha 17 · `portfolio_summary`** (M2 · Integrante A) — `unrealized_gain_pct` por holding, solo `valuation_source = market` → `bar` con `excluded[]`.
-- [ ] **Brecha 18 · `financial_profile_card`** (M2 · Integrante A) — `monthly_savings_capacity` solo con `detail = exact` → `waterfall` con `start` / `end`. Confirmar que el test de `summary` sigue sin montos.
-- [ ] **Brecha 19 · `risk_analysis_panel`** (decisión M2) — rendimiento esperado por `asset_type`. Mientras tanto, `scatter` con los 3 perfiles y `reference_x = allocation_by_asset_type.accion`.
-- [ ] **Brecha 8** (M2) — moneda base antes de sumar USD + MXN; afecta la dispersión y cualquier gráfica futura con montos.
-- [ ] **Tests por tool** (M3) — `props.chart` presente con datos válidos, `null` sin datos, y el audit log sigue sin registrar montos de la serie.
+- [x] **Brecha 13 · helper compartido** (M3) — `App\Mcp\Support\ChartData` (no `app/Support/Charts/ChartBuilder.php` como se proponía aquí -- vive junto a `ToolAction`, mismo patrón). Test unitario: `tests/Unit/Mcp/Support/ChartDataTest.php`.
+- [x] **Brecha 14 · `simulation_result_card`** (M2 · Integrante A) — `InvestmentSimulationServiceAdapter::simulate()` agrupa la salida de `project()` en ≤ 10 periodos → `stacked_column`. Test: `tests/Feature/Mcp/SimulateInvestmentToolTest.php`.
+- [x] **Brecha 15 · `asset_info_card`** (M4 · Integrante C) — `GetAssetInformation` agrega la serie de cierres (`timeSeries($symbol, '1day', ['outputsize' => 30])`); `timeSeries()` ahora cachea en `TwelveDataMarketDataProvider` como `quote()`. Si falla, `chart = null` y la ficha responde igual. Test con `MockMarketDataProvider` y `Http::fake`.
+- [x] **Brecha 16 · `market_snapshot_grid`** (M4 · Integrante C) — `percent_change` normalizado a float en `quote()` y agregado al Mock → `column`.
+- [x] **Brecha 17 · `portfolio_summary`** (M2 · Integrante A) — `unrealized_gain_pct` por holding, solo `valuation_source = market` → `bar` con `excluded[]`.
+- [x] **Brecha 18 · `financial_profile_card`** (M2 · Integrante A) — `monthly_savings_capacity` solo con `detail = exact` → `waterfall` con `start` / `end`. El test de `summary` confirma que sigue sin montos ni `chart`.
+- [x] **Brecha 19 · `risk_analysis_panel`** (decisión M2, parcial) — `scatter` con los 3 perfiles (calibrados en `investment_rules.php`) y `reference_x = allocation_by_asset_type.accion`. El rendimiento esperado *del portafolio real* por `asset_type` sigue pendiente de esa decisión de M2.
+- [x] **Brecha 8** (M2) — `App\Services\Support\CurrencyConverter` + `config/currency.php`: moneda base antes de sumar USD + MXN, en `RiskAnalysisServiceAdapter` y `EloquentPortfolioService`.
+- [x] **Tests por tool** (M3) — `props.chart` presente con datos válidos, `null` sin datos/cuando el proveedor falla, y el audit log sigue sin registrar montos de la serie (ver `LogsToolInvocation` -- no cambió, los charts no se loggean).
 
 ## 2. Frontend Blade (M8 · Integrante D)
 
