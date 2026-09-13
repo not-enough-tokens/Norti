@@ -12,11 +12,11 @@
 
                     @foreach ($message['components'] ?? [] as $invocation)
                         @php $viewName = 'components.a2ui.'.$invocation['component']; @endphp
-                        <div class="ml-11 rounded-xl border border-border-default bg-bg-surface p-4">
+                        <div class="ml-11">
                             @if (\Illuminate\Support\Facades\View::exists($viewName))
                                 <x-dynamic-component :component="'a2ui.'.$invocation['component']" :props="$invocation['props']" />
                             @else
-                                <pre class="overflow-x-auto text-xs text-text-muted">{{ json_encode($invocation['props'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                <pre class="overflow-x-auto rounded-xl border border-border-default bg-bg-surface p-4 text-xs text-text-muted">{{ json_encode($invocation['props'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                             @endif
                         </div>
                     @endforeach

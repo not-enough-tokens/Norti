@@ -1,50 +1,51 @@
 @props(['props' => []])
 
-@forelse ($props['goals'] ?? [] as $goal)
-    <div style="margin-bottom: 0.75rem; border-bottom: 1px solid rgba(128,128,128,0.2); padding-bottom: 0.5rem;">
-        <div style="display: flex; justify-content: space-between;">
-            <span><strong>{{ $goal['name'] }}</strong> <span class="pill">{{ $goal['goal_type'] }}</span></span>
-            @if (array_key_exists('is_overdue', $goal))
-                @if ($goal['is_overdue'])
-                    <span class="badge negative">Vencida</span>
-                @elseif ($goal['reaches_goal'])
-                    <span class="badge positive">En camino</span>
-                @else
-                    <span class="badge" style="background: #b26a00; color: white;">Fuera de camino</span>
-                @endif
-            @endif
-        </div>
+<x-a2ui.atoms.card title="Tus metas financieras" tool="get_financial_goals">
+    @forelse ($props['goals'] ?? [] as $goal)
+        <div class="flex flex-col gap-2 border-b border-border-default pb-4 last:border-b-0">
+            <div class="flex items-center justify-between gap-2">
+                <div>
+                    <p class="font-medium text-text-primary">{{ $goal['name'] }}</p>
+                    <p class="text-xs text-text-muted">{{ ucfirst($goal['goal_type']) }}</p>
+                </div>
 
-        <div class="progress">
-            <div style="width: {{ min(100, $goal['progress_percentage']) }}%;"></div>
-        </div>
-        <span class="hint">{{ $goal['progress_percentage'] }}% completado</span>
-        @if (isset($goal['months_remaining']))
-            <span class="hint">· {{ $goal['months_remaining'] }} meses restantes</span>
-        @endif
-
-        @if ($props['detail'] === 'exact')
-            <div style="margin-top: 0.25rem;">
-                <span class="stat"><span class="label">Meta</span><span class="value">${{ number_format($goal['target_amount'], 2) }}</span></span>
-                <span class="stat"><span class="label">Ahorrado</span><span class="value">${{ number_format($goal['current_amount'], 2) }}</span></span>
-                @if (($goal['shortfall'] ?? 0) > 0)
-                    <span class="stat"><span class="label">Falta</span><span class="value">${{ number_format($goal['shortfall'], 2) }}</span></span>
+                @if (array_key_exists('is_overdue', $goal))
+                    @if ($goal['is_overdue'])
+                        <x-a2ui.atoms.badge tone="negative">Vencida</x-a2ui.atoms.badge>
+                    @elseif ($goal['reaches_goal'])
+                        <x-a2ui.atoms.badge tone="positive">En camino</x-a2ui.atoms.badge>
+                    @else
+                        <x-a2ui.atoms.badge tone="warning">Fuera de camino</x-a2ui.atoms.badge>
+                    @endif
                 @endif
             </div>
-        @endif
 
-        @foreach ($goal['actions'] as $action)
-            <span class="pill">{{ $action['label'] }}</span>
-        @endforeach
-    </div>
-@empty
-    <p class="hint">Sin metas financieras registradas.</p>
-@endforelse
+            <x-a2ui.atoms.progress-fill :percentage="$goal['progress_percentage']" />
+            <p class="text-xs text-text-muted">
+                {{ $goal['progress_percentage'] }}% completado
+                @if (isset($goal['months_remaining']))
+                    · {{ $goal['months_remaining'] }} meses restantes
+                @endif
+            </p>
 
-@if (($props['actions'] ?? []) !== [])
-    <div style="margin-top: 0.5rem;">
-        @foreach ($props['actions'] as $action)
-            <span class="badge">{{ $action['label'] }}</span>
+            @if (($props['detail'] ?? null) === 'exact')
+                <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                    <x-a2ui.atoms.stat label="Meta">${{ number_format($goal['target_amount'], 2) }}</x-a2ui.atoms.stat>
+                    <x-a2ui.atoms.stat label="Ahorrado">${{ number_format($goal['current_amount'], 2) }}</x-a2ui.atoms.stat>
+
+                    @if (($goal['shortfall'] ?? 0) > 0)
+                        <x-a2ui.atoms.stat label="Falta" tone="negative">${{ number_format($goal['shortfall'], 2) }}</x-a2ui.atoms.stat>
+                    @endif
+                </div>
+            @endif
+        </div>
+    @empty
+        <p class="text-sm text-text-muted">Sin metas financieras registradas.</p>
+    @endforelse
+
+    <x-slot:actions>
+        @foreach ($props['actions'] ?? [] as $action)
+            <x-a2ui.atoms.option-chip>{{ $action['label'] }}</x-a2ui.atoms.option-chip>
         @endforeach
-    </div>
-@endif
+    </x-slot:actions>
+</x-a2ui.atoms.card>
