@@ -331,9 +331,9 @@ Built at **HackMTY 2026** for the **Banorte × Tec de Monterrey** challenge.
 The project was developed across four workstreams:
 
 - Financial domain and services: [RodrigoFQ7](https://github.com/rodrigofq7)
-- MCP and infrastructure: @F3lix83
-- Market data and AI: @not-enough-tokens
-- Financial education and product: @relative-string
+- MCP and infrastructure: [F3lix83](https://github.com/f3lix83)
+- Market data and AI: [not-enough-tokens](https://github.com/not-enough-tokens)
+- Financial education and product: [relative-string](https://github.com/relative-string)
 
 Norti is a hackathon prototype, but the architecture was designed around a principle we wanted to take seriously from the beginning:
 
