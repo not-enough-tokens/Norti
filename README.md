@@ -1,124 +1,277 @@
-# Banorte MCP — Norti
 
-Plataforma de **Inteligencia Financiera y Educación Financiera vía MCP** — HackMTY 2026, reto Banorte × Tec de Monterrey.
+<p align="center">
+  <img src="assets/logo/norti-logo.png" alt="Norti logo" width="220">
+</p>
 
-No es un chatbot financiero: es una capa de capacidades financieras interoperables que un agente de IA descubre y usa mediante *tools* MCP explícitas, sin acceso directo a la base de datos. La interfaz se genera con el patrón **A2UI**: el agente elige un componente semántico y llena sus props; la vista Blade decide el layout.
+**Financial intelligence and education, powered by AI and MCP.**
 
-```
-Usuario → Agente (LLM) → MCP → A2UI → Componentes
-```
+Norti started with a simple question:
 
-Los tres pilares: **MCP + dominio financiero + educación financiera**. Todos los datos de usuario son sintéticos; no es banca real, no ejecuta trading y no da asesoría financiera regulada.
+> What if making a financial decision wasn't just about knowing what is happening in the market, but also understanding how it relates to your own situation?
 
-## Estado (checkpoint)
+During HackMTY 2026, we set out to build a financial assistant that could connect a person's financial context — their goals, portfolio and assets — with real market information and financial education.
 
-| Hito | Descripción | Estado |
-|---|---|---|
-| M0 | Fundación (Laravel, DB, auth, MCP) | ✅ |
-| M1 | Dominio financiero (modelos, migraciones, factories) | ✅ |
-| M2 | Servicios financieros (riesgo, simulación, metas) | ✅ |
-| M3 | MCP Server + 11 tools | ✅ |
-| M4 | Datos de mercado reales (Twelve Data) | ✅ |
-| M5 | Agente de IA (Laravel AI SDK, agnóstico de proveedor) | ✅ |
-| M6 | Educación financiera (temas, ruta, progreso, recomendaciones) | ✅ |
-| M7 | Seguridad (scopes, audit log, rate limiting) | ✅ |
-| M8 | Producto y demo (auth, onboarding, chat con A2UI, educación) | 🔶 en progreso |
+What we ended up building was something a little different.
 
-Detalle en [`docs/development/roadmap.md`](docs/development/roadmap.md).
+Norti became an experiment in how an AI agent can interact with financial capabilities through the **Model Context Protocol (MCP)**, while keeping business logic, permissions and data access under the control of the application.
 
-## Stack
+The result is a financial platform where the AI does not directly access the database or decide how financial operations are executed. Instead, it discovers and uses explicit capabilities exposed through MCP, and those capabilities return structured information that can become dynamic user interfaces through **A2UI**.
 
-- PHP 8.4 (`^8.3`), Laravel 13
-- PostgreSQL en Supabase (SQLite para desarrollo local rápido)
-- [`laravel/mcp`](https://github.com/laravel/mcp) — server MCP por **Streamable HTTP**
-- [`laravel/ai`](https://github.com/laravel/ai) — agente; OpenAI por defecto, Anthropic u otros por override ([ADR 007](docs/decisions/007-ai-agent-provider-decoupling.md))
-- Laravel Passport (token del agente hacia el MCP) + sesión estándar de Laravel (humano en la app Blade)
-- Blade + Vite + Tailwind 4; marca **Norti**, tokens de la librería de Figma «Banorte MCP — A2UI Components»
-- Twelve Data como proveedor de market data, detrás de `MarketDataProviderContract`
-- PHPUnit + GitHub Actions (Pint + tests)
-
-## Arquitectura
-
-```
-MCP Tool → Application Service → Domain/Business Logic → Models → DB / Proveedor externo
+```text
+User → AI Agent → MCP → Financial capabilities → A2UI → Interface
 ```
 
-Las tools **nunca** contienen lógica financiera: validan scope, delegan a un servicio (contratos en `app/Services/Contracts/`, bindings en `DomainServiceProvider`) y responden `Response::structured(['component' => ..., 'props' => ...])`.
+All user data in the demo is synthetic. Norti does not connect to real banking accounts, execute trades or provide regulated financial advice.
 
-```
-app/Mcp/                 Servidor y tools MCP
-app/Services/            Contratos, servicios de dominio, adaptadores, market data
-app/Ai/                  Agente (BanorteMcpAgent) y captura de resultados de tools
-app/Http/Controllers/    Auth, onboarding, chat, educación, tokens MCP
-resources/views/components/a2ui/   Componentes A2UI (uno por `component` que emiten las tools)
-docs/                    Arquitectura, decisiones (ADR), deployment, roadmap
-```
+<p align="center">
+  <img src="assets/screenshots/landing.png" alt="Norti landing page" width="1000">
+</p>
 
-### Catálogo de tools
+## Why Norti?
+
+Financial decisions are rarely made from a single piece of information.
+
+A market quote tells you what an asset is worth. A portfolio tells you what you already own. A financial goal tells you what you are trying to achieve. Your financial profile provides context. Education determines whether you actually understand the decision you are making.
+
+We wanted to bring those pieces together.
+
+Norti combines:
+
+- Financial profiles and goals
+- Portfolios and holdings
+- Asset information
+- Real market data through Twelve Data
+- Financial analysis and simulations
+- Financial education and learning progress
+- An AI agent capable of discovering and using these capabilities
+
+The goal is not simply to answer:
+
+> “What should I invest in?”
+
+It is to provide enough context for a person to understand what is happening, why it matters, and what they should consider before making a decision.
+
+<p align="center">
+  <img src="assets/screenshots/education.png" alt="Norti financial education learning path" width="900">
+</p>
+
+## What we built
+
+The final Norti prototype is organized around three ideas:
+
+**Financial domain.**  
+Norti has its own financial domain with profiles, goals, portfolios, holdings, assets and financial services rather than relying exclusively on an external market-data API.
+
+**MCP as the interface between AI and the application.**  
+The agent interacts with the system through explicit MCP tools. Tools validate permissions and delegate the actual work to application services instead of containing financial logic themselves.
+
+**Education as part of the experience.**  
+Financial information is not isolated from learning. Norti exposes educational topics, learning paths and progress alongside its financial capabilities.
+
+This resulted in an MCP server with 11 tools covering financial information, market data, analysis, simulations and education.
+
+### MCP tools
 
 | Tool | Scope |
 |---|---|
-| `get_financial_profile`, `get_financial_goals`, `get_portfolio`, `analyze_portfolio`, `get_asset_information`, `get_market_snapshot` | `mcp:read` |
-| `get_educational_topic`, `get_learning_path`, `get_learning_progress` | `mcp:read` |
+| `get_financial_profile` | `mcp:read` |
+| `get_financial_goals` | `mcp:read` |
+| `get_portfolio` | `mcp:read` |
+| `analyze_portfolio` | `mcp:read` |
+| `get_asset_information` | `mcp:read` |
+| `get_market_snapshot` | `mcp:read` |
+| `get_educational_topic` | `mcp:read` |
+| `get_learning_path` | `mcp:read` |
+| `get_learning_progress` | `mcp:read` |
 | `simulate_investment` | `mcp:simulate` |
 | `mark_topic_completed` | `mcp:write` |
 
-Fuera del MVP a propósito: `execute_trade`, `transfer_money`, `withdraw_funds`.
+Some capabilities were deliberately left outside the MVP:
 
-### Seguridad
+`execute_trade`, `transfer_money`, and `withdraw_funds`.
 
-- Cada tool valida su scope con `tokenCan()`; la ruta `/mcp/banorte` va con `auth:api` + `throttle:mcp`.
-- `get_financial_profile` y `get_financial_goals` devuelven un resumen por defecto; los montos exactos solo con `detail: "exact"`.
-- Cada `tools/call` queda en `audit_logs` (solo metadata, nunca montos exactos).
-- `/api/market-data/*` protegido con `auth:api` y `throttle:market-data`.
+Norti is designed to demonstrate financial intelligence and education, not to operate as a real banking or trading system.
 
-## Puesta en marcha
+## From agent to interface
 
-Requisitos: PHP 8.3+, Composer, Node 20+.
+One of the things that changed the most during the hackathon was our idea of what the AI interface should look like.
+
+We initially thought primarily in terms of conversation: ask a question, call a capability, receive an answer.
+
+As the project evolved, we introduced **A2UI**.
+
+Instead of returning only text, MCP tools can return a structured response describing a semantic UI component and its properties.
+
+<p align="center">
+  <img src="assets/screenshots/a2ui-portfolio.png" alt="Norti financial education learning path" width="900">
+</p>
+
+The agent can select the appropriate component, while the Blade view remains responsible for deciding how that component is rendered.
+
+```text
+User
+  ↓
+AI Agent
+  ↓
+MCP Tool
+  ↓
+Application Service
+  ↓
+Structured result
+  ↓
+A2UI component + props
+  ↓
+Blade component
+```
+
+This allowed us to keep the intelligence and business logic separate from the presentation layer while still making the interaction feel more like an application than a traditional chatbot.
+
+## Architecture
+
+At the core of Norti is a simple separation of responsibilities:
+
+```text
+MCP Tool
+    ↓
+Application Service
+    ↓
+Domain / Business Logic
+    ↓
+Models
+    ↓
+Database / External Provider
+```
+
+Tools do not contain financial logic. They validate their required scope, call an application service and return a structured response.
+
+The main application layers are:
+
+```text
+app/Mcp/                         MCP server and tools
+app/Services/                   Domain services, contracts and adapters
+app/Ai/                         AI agent and tool-result handling
+app/Http/Controllers/           Authentication, onboarding, chat and education
+resources/views/components/a2ui/ A2UI components
+docs/                            Architecture, decisions and development notes
+```
+
+This separation also makes external providers replaceable. Market data is accessed through `MarketDataProviderContract`, with Twelve Data as the current implementation.
+
+```text
+MarketDataProviderContract
+          ↓
+  TwelveDataProvider
+          ↓
+   TwelveDataClient
+          ↓
+      Twelve Data
+```
+
+The AI provider follows the same principle. Norti currently uses OpenAI through Laravel AI, while the agent is designed so the model provider can be overridden.
+
+## Security by design
+
+Because Norti works with financial information, even synthetic data in a hackathon prototype, we wanted the AI layer to operate through controlled capabilities rather than unrestricted application access.
+
+The MCP layer includes:
+
+- Scope validation for individual tools
+- API authentication for the MCP endpoint
+- Rate limiting
+- Audit logging of tool calls
+- Controlled detail levels for sensitive financial information
+- Separate authentication flows for the human application and the AI agent
+
+For example, financial profile and goal tools return summarized information by default, while exact amounts require an explicit detail level.
+
+Audit logs store metadata about tool calls without storing exact financial amounts.
+
+## Technology
+
+- PHP 8.4 / Laravel 13
+- PostgreSQL with Supabase
+- SQLite for fast local development
+- Laravel MCP
+- Laravel AI
+- OpenAI
+- Anthropic support through the AI provider abstraction
+- Blade, Vite and Tailwind CSS 4
+- Twelve Data
+- Laravel Passport
+- PHPUnit
+- GitHub Actions
+
+## Running Norti locally
+
+### Requirements
+
+PHP 8.3+, Composer and Node.js 20+.
 
 ```bash
-composer setup                       # instala dependencias, crea .env, key, migra y compila assets
-php artisan passport:keys            # llaves de Passport (no se versionan)
+composer setup
+php artisan passport:keys
 php artisan passport:client --personal --name="Norti"
 ```
 
-> No uses `passport:install`: republica migrations de OAuth que este proyecto ya tiene.
-> En Windows sin la extensión `sodium`: `composer install --ignore-platform-req=ext-sodium`.
-
-Variables relevantes en `.env` (ver `.env.example`):
-
-| Variable | Uso |
-|---|---|
-| `DB_*` | SQLite por defecto; connection string de Supabase para Postgres ([guía](docs/deployment/supabase-setup.md)) |
-| `TWELVE_DATA_API_KEY` | Datos de mercado reales |
-| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Proveedor del agente |
-| `MCP_RATE_LIMIT_PER_MINUTE` | Límite del MCP |
-| `MCP_LOOPBACK_URL` | Ver nota de `/chat` abajo |
-
-### Ejecutar
+For Windows environments without the `sodium` extension:
 
 ```bash
-composer dev                         # servidor + assets
-php artisan db:seed --class=Database\\Seeders\\DemoSeeder   # usuario demo@banorte.local / password
+composer install --ignore-platform-req=ext-sodium
 ```
 
-**Nota sobre `/chat`:** hace un *self-loopback* HTTP a `/mcp/banorte` dentro de la misma request. Un `php artisan serve` de un solo hilo (siempre en Windows) se bloquea a sí mismo. Solución: levantar un segundo proceso dedicado al MCP y apuntar a él.
+Configure the relevant variables in `.env`:
 
-```bash
-php artisan serve --port=8001                               # solo /mcp/banorte
-MCP_LOOPBACK_URL=http://localhost:8001 php artisan serve    # la app en :8000
+```env
+DB_*
+TWELVE_DATA_API_KEY=
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+MCP_RATE_LIMIT_PER_MINUTE=
+MCP_LOOPBACK_URL=
 ```
 
-### Probar el MCP sin frontend
+Then start the application:
 
 ```bash
-php artisan mcp:inspector /mcp/banorte                      # UI interactiva
-php artisan mcp:client-tools                                # list_tools()
+composer dev
+```
+
+Seed the demo environment:
+
+```bash
+php artisan db:seed --class=Database\\Seeders\\DemoSeeder
+```
+
+The demo seeder creates the local demo account.
+
+### MCP development server
+
+The `/chat` flow uses an HTTP loopback to the MCP endpoint. When using a single-threaded `php artisan serve` process, the application can block while waiting for its own request.
+
+Run the MCP endpoint separately:
+
+```bash
+php artisan serve --port=8001
+```
+
+Then point the main application to it:
+
+```bash
+MCP_LOOPBACK_URL=http://localhost:8001 php artisan serve
+```
+
+### Testing MCP directly
+
+The MCP layer can also be tested without the frontend:
+
+```bash
+php artisan mcp:inspector /mcp/banorte
+php artisan mcp:client-tools
 php artisan mcp:client-call get_market_snapshot --arguments='{"symbols":["AAPL"]}'
-php artisan mcp:demo-agent "¿Cuál es la cotización de AAPL?"   # agente real
+php artisan mcp:demo-agent "¿Cuál es la cotización de AAPL?"
 ```
 
-Los comandos `mcp:*` requieren `php artisan serve` corriendo. Guion completo de demo: [`docs/development/demo-script.md`](docs/development/demo-script.md).
+The last command runs the actual agent and allows the model to select the appropriate MCP tool.
 
 ### Tests
 
@@ -127,19 +280,61 @@ composer test
 vendor/bin/pint --test
 ```
 
-Los tests usan `RefreshDatabase`: no los corras contra una base con datos reales.
+Tests use `RefreshDatabase`; do not run them against a database containing real data.
 
-## Documentación
+## What we learned
 
-- [`docs/architecture/`](docs/architecture) — alcance, arquitectura, modelo de dominio, contrato A2UI
-- [`docs/decisions/`](docs/decisions) — ADRs (Laravel, Twelve Data, MCP como capa de interfaz, `get_financial_goals`, desacople del proveedor de IA, …)
-- [`docs/development/`](docs/development) — roadmap, demo, auditoría, pendientes de A2UI
-- [`CLAUDE.md`](CLAUDE.md) / [`AGENTS.md`](AGENTS.md) — contexto para agentes de código
+Norti changed quite a bit between the idea we started with and the system we finished.
 
-## Fuera de alcance
+We started thinking about a financial assistant.
 
-Banca real (cuentas, transferencias, pagos), trading real, asesoría financiera regulada, cobertura universal de mercados.
+We ended up thinking much more about **how an AI system should interact with an application**.
 
-## Equipo
+MCP forced us to make the capabilities of our financial domain explicit. The agent could not simply “know” how our application worked; it had to discover what it could do.
 
-HackMTY 2026 — Integrantes A (dominio y servicios), B (MCP e infraestructura), C (datos de mercado y agente), D (educación y producto).
+Building the financial domain forced us to separate business logic from the AI layer.
+
+Integrating real market data forced us to think about provider boundaries instead of coupling the entire application to one API.
+
+And A2UI changed our understanding of the interface itself: an AI interaction does not necessarily have to end with a paragraph of generated text.
+
+The hackathon therefore became less about building a chatbot and more about exploring a question that sits underneath Norti:
+
+> **What happens when financial capabilities become tools that an AI agent can understand, combine and use — while the application still controls what the agent is allowed to do?**
+
+That is the Norti we ended up building.
+
+## Documentation
+
+More detailed technical documentation is available in:
+
+- [`docs/architecture/`](docs/architecture) — project scope, system architecture, domain model and A2UI contract
+- [`docs/decisions/`](docs/decisions) — architecture decision records
+- [`docs/development/`](docs/development) — roadmap, demo script, audit notes and development documentation
+- [`CLAUDE.md`](CLAUDE.md) / [`AGENTS.md`](AGENTS.md) — context and guidelines for coding agents
+
+## Out of scope
+
+Norti does not currently provide:
+
+- Real banking account integration
+- Money transfers or payments
+- Real trading or order execution
+- Regulated financial advice
+- Universal market coverage
+- Production banking infrastructure
+
+## Team
+
+Built at **HackMTY 2026** for the **Banorte × Tec de Monterrey** challenge.
+
+The project was developed across four workstreams:
+
+- Financial domain and services: @RodrigoFQ7
+- MCP and infrastructure: @F3lix83
+- Market data and AI: @not-enough-tokens
+- Financial education and product: @relative-string
+
+Norti is a hackathon prototype, but the architecture was designed around a principle we wanted to take seriously from the beginning:
+
+**AI should be able to use financial capabilities without being given unrestricted control over the system.**
