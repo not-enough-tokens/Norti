@@ -1,58 +1,145 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Banorte MCP — Norti
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Plataforma de **Inteligencia Financiera y Educación Financiera vía MCP** — HackMTY 2026, reto Banorte × Tec de Monterrey.
 
-## About Laravel
+No es un chatbot financiero: es una capa de capacidades financieras interoperables que un agente de IA descubre y usa mediante *tools* MCP explícitas, sin acceso directo a la base de datos. La interfaz se genera con el patrón **A2UI**: el agente elige un componente semántico y llena sus props; la vista Blade decide el layout.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
-
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+Usuario → Agente (LLM) → MCP → A2UI → Componentes
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Los tres pilares: **MCP + dominio financiero + educación financiera**. Todos los datos de usuario son sintéticos; no es banca real, no ejecuta trading y no da asesoría financiera regulada.
 
-## Contributing
+## Estado (checkpoint)
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+| Hito | Descripción | Estado |
+|---|---|---|
+| M0 | Fundación (Laravel, DB, auth, MCP) | ✅ |
+| M1 | Dominio financiero (modelos, migraciones, factories) | ✅ |
+| M2 | Servicios financieros (riesgo, simulación, metas) | ✅ |
+| M3 | MCP Server + 11 tools | ✅ |
+| M4 | Datos de mercado reales (Twelve Data) | ✅ |
+| M5 | Agente de IA (Laravel AI SDK, agnóstico de proveedor) | ✅ |
+| M6 | Educación financiera (temas, ruta, progreso, recomendaciones) | ✅ |
+| M7 | Seguridad (scopes, audit log, rate limiting) | ✅ |
+| M8 | Producto y demo (auth, onboarding, chat con A2UI, educación) | 🔶 en progreso |
 
-## Code of Conduct
+Detalle en [`docs/development/roadmap.md`](docs/development/roadmap.md).
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Stack
 
-## Security Vulnerabilities
+- PHP 8.4 (`^8.3`), Laravel 13
+- PostgreSQL en Supabase (SQLite para desarrollo local rápido)
+- [`laravel/mcp`](https://github.com/laravel/mcp) — server MCP por **Streamable HTTP**
+- [`laravel/ai`](https://github.com/laravel/ai) — agente; OpenAI por defecto, Anthropic u otros por override ([ADR 007](docs/decisions/007-ai-agent-provider-decoupling.md))
+- Laravel Passport (token del agente hacia el MCP) + sesión estándar de Laravel (humano en la app Blade)
+- Blade + Vite + Tailwind 4; marca **Norti**, tokens de la librería de Figma «Banorte MCP — A2UI Components»
+- Twelve Data como proveedor de market data, detrás de `MarketDataProviderContract`
+- PHPUnit + GitHub Actions (Pint + tests)
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Arquitectura
 
-## License
+```
+MCP Tool → Application Service → Domain/Business Logic → Models → DB / Proveedor externo
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Las tools **nunca** contienen lógica financiera: validan scope, delegan a un servicio (contratos en `app/Services/Contracts/`, bindings en `DomainServiceProvider`) y responden `Response::structured(['component' => ..., 'props' => ...])`.
+
+```
+app/Mcp/                 Servidor y tools MCP
+app/Services/            Contratos, servicios de dominio, adaptadores, market data
+app/Ai/                  Agente (BanorteMcpAgent) y captura de resultados de tools
+app/Http/Controllers/    Auth, onboarding, chat, educación, tokens MCP
+resources/views/components/a2ui/   Componentes A2UI (uno por `component` que emiten las tools)
+docs/                    Arquitectura, decisiones (ADR), deployment, roadmap
+```
+
+### Catálogo de tools
+
+| Tool | Scope |
+|---|---|
+| `get_financial_profile`, `get_financial_goals`, `get_portfolio`, `analyze_portfolio`, `get_asset_information`, `get_market_snapshot` | `mcp:read` |
+| `get_educational_topic`, `get_learning_path`, `get_learning_progress` | `mcp:read` |
+| `simulate_investment` | `mcp:simulate` |
+| `mark_topic_completed` | `mcp:write` |
+
+Fuera del MVP a propósito: `execute_trade`, `transfer_money`, `withdraw_funds`.
+
+### Seguridad
+
+- Cada tool valida su scope con `tokenCan()`; la ruta `/mcp/banorte` va con `auth:api` + `throttle:mcp`.
+- `get_financial_profile` y `get_financial_goals` devuelven un resumen por defecto; los montos exactos solo con `detail: "exact"`.
+- Cada `tools/call` queda en `audit_logs` (solo metadata, nunca montos exactos).
+- `/api/market-data/*` protegido con `auth:api` y `throttle:market-data`.
+
+## Puesta en marcha
+
+Requisitos: PHP 8.3+, Composer, Node 20+.
+
+```bash
+composer setup                       # instala dependencias, crea .env, key, migra y compila assets
+php artisan passport:keys            # llaves de Passport (no se versionan)
+php artisan passport:client --personal --name="Norti"
+```
+
+> No uses `passport:install`: republica migrations de OAuth que este proyecto ya tiene.
+> En Windows sin la extensión `sodium`: `composer install --ignore-platform-req=ext-sodium`.
+
+Variables relevantes en `.env` (ver `.env.example`):
+
+| Variable | Uso |
+|---|---|
+| `DB_*` | SQLite por defecto; connection string de Supabase para Postgres ([guía](docs/deployment/supabase-setup.md)) |
+| `TWELVE_DATA_API_KEY` | Datos de mercado reales |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Proveedor del agente |
+| `MCP_RATE_LIMIT_PER_MINUTE` | Límite del MCP |
+| `MCP_LOOPBACK_URL` | Ver nota de `/chat` abajo |
+
+### Ejecutar
+
+```bash
+composer dev                         # servidor + assets
+php artisan db:seed --class=Database\\Seeders\\DemoSeeder   # usuario demo@banorte.local / password
+```
+
+**Nota sobre `/chat`:** hace un *self-loopback* HTTP a `/mcp/banorte` dentro de la misma request. Un `php artisan serve` de un solo hilo (siempre en Windows) se bloquea a sí mismo. Solución: levantar un segundo proceso dedicado al MCP y apuntar a él.
+
+```bash
+php artisan serve --port=8001                               # solo /mcp/banorte
+MCP_LOOPBACK_URL=http://localhost:8001 php artisan serve    # la app en :8000
+```
+
+### Probar el MCP sin frontend
+
+```bash
+php artisan mcp:inspector /mcp/banorte                      # UI interactiva
+php artisan mcp:client-tools                                # list_tools()
+php artisan mcp:client-call get_market_snapshot --arguments='{"symbols":["AAPL"]}'
+php artisan mcp:demo-agent "¿Cuál es la cotización de AAPL?"   # agente real
+```
+
+Los comandos `mcp:*` requieren `php artisan serve` corriendo. Guion completo de demo: [`docs/development/demo-script.md`](docs/development/demo-script.md).
+
+### Tests
+
+```bash
+composer test
+vendor/bin/pint --test
+```
+
+Los tests usan `RefreshDatabase`: no los corras contra una base con datos reales.
+
+## Documentación
+
+- [`docs/architecture/`](docs/architecture) — alcance, arquitectura, modelo de dominio, contrato A2UI
+- [`docs/decisions/`](docs/decisions) — ADRs (Laravel, Twelve Data, MCP como capa de interfaz, `get_financial_goals`, desacople del proveedor de IA, …)
+- [`docs/development/`](docs/development) — roadmap, demo, auditoría, pendientes de A2UI
+- [`CLAUDE.md`](CLAUDE.md) / [`AGENTS.md`](AGENTS.md) — contexto para agentes de código
+
+## Fuera de alcance
+
+Banca real (cuentas, transferencias, pagos), trading real, asesoría financiera regulada, cobertura universal de mercados.
+
+## Equipo
+
+HackMTY 2026 — Integrantes A (dominio y servicios), B (MCP e infraestructura), C (datos de mercado y agente), D (educación y producto).
