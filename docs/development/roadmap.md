@@ -22,7 +22,7 @@ The milestones are designed to minimize coupling between components and allow in
 | M5 | AI / Agents | Who uses these capabilities? | Completed |
 | M6 | Financial Education | How does the system create user value? | Completed |
 | M7 | Security & Hardening | How is the system protected? | Completed |
-| M8 | Product & Demo | How is the complete solution demonstrated? | Planned |
+| M8 | Product & Demo | How is the complete solution demonstrated? | In progress |
 
 Milestone statuses are expected to change throughout development.
 
@@ -429,7 +429,7 @@ A coherent end-to-end prototype suitable for the hackathon presentation.
 
 ### Status
 
-**Planned** on the product/UI side -- still waiting on the Figma A2UI component library and the site's frontend architecture (home, auth, chat). Backend-side demo prep already exists and isn't blocked by that: `database/seeders/DemoSeeder.php` (a demo user with profile, a diversified portfolio, deliberately no goals, and partial education progress) and `docs/development/demo-script.md` (10 example questions mapped to all 10 MCP tools, following the Demo Requirements above).
+**In progress**: auth, onboarding, the real chat with A2UI components and the education UI are built. Backend-side demo prep already exists and isn't blocked by that: `database/seeders/DemoSeeder.php` (a demo user with profile, a diversified portfolio, deliberately no goals, and partial education progress) and `docs/development/demo-script.md` (10 example questions mapped to all 10 MCP tools, following the Demo Requirements above).
 
 ---
 
